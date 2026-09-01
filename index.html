@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lab</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <p class="eyebrow">Personal lab</p>
+      <h1>Hello.</h1>
+      <p class="lede">A place to learn HTML and share ideas. Nothing here moves real money.</p>
+    </header>
+
+    <section aria-labelledby="ideas-heading">
+      <h2 id="ideas-heading">Ideas</h2>
+      <ul id="ideas" class="ideas"></ul>
+      <p class="hint">Edit <code>data/ideas.json</code> and refresh. Or add one below (saved in this browser only).</p>
+      <form id="idea-form" class="idea-form">
+        <label for="idea-input" class="sr-only">New idea</label>
+        <input id="idea-input" type="text" maxlength="200" placeholder="Scratch an idea…" required>
+        <button type="submit">Add</button>
+      </form>
+    </section>
+
+    <footer>
+      <p>Vanilla HTML/JS · GitHub Pages · <a href="https://github.com/damnYouCode/lab">source</a></p>
+    </footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

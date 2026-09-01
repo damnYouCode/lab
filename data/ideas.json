@@ -1,0 +1,5 @@
+[
+  { "text": "Ship a one-file page you can read end to end.", "example": true },
+  { "text": "Keep secrets out of the browser. Always.", "example": true },
+  { "text": "Later: experiments live under /experiments/ — not the home identity.", "example": true }
+]

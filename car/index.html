@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Model Y Dashboard</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --card: #151515;
+    --line: #262626;
+    --text: #f2f2f2;
+    --muted: #9a9a9a;
+    --green: #22c55e;
+    --cyan: #06b6d4;
+    --red: #ef4444;
+    --amber: #f59e0b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 20px;
+    line-height: 1.4;
+    padding: 28px;
+  }
+  header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+  h1 { font-size: 34px; margin: 0; letter-spacing: -0.01em; }
+  .stamp { color: var(--muted); font-size: 18px; }
+  h2 {
+    font-size: 16px; text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--muted); margin: 32px 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px;
+  }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; }
+  .label { color: var(--muted); font-size: 15px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+  .big { font-size: 46px; font-weight: 700; line-height: 1.1; }
+  .sub { color: var(--muted); font-size: 18px; margin-top: 4px; }
+  .bar { height: 18px; background: #222; border-radius: 9px; overflow: hidden; margin: 14px 0 6px; }
+  .fill { height: 100%; border-radius: 9px; background: linear-gradient(90deg, var(--green), var(--cyan)); }
+  .fill.low { background: var(--red); }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; margin: 10px 0 0; }
+  dt { color: var(--muted); }
+  dd { margin: 0; text-align: right; font-weight: 600; }
+  .on { color: var(--green); }
+  .off { color: var(--muted); }
+  .tag {
+    display: inline-block; font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 6px; margin-right: 8px; vertical-align: middle;
+  }
+  .tag.new { background: var(--amber); color: #1a1100; }
+  .tag.latest { background: var(--cyan); color: #00161a; }
+  .track { font-size: 26px; font-weight: 700; margin: 4px 0 6px; }
+  ul.features { margin: 10px 0 0; padding-left: 22px; }
+  ul.features li { margin: 4px 0; }
+  footer { color: var(--muted); font-size: 15px; margin-top: 36px; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>2026 Model Y Long Range Dual-Motor</h1>
+    <div class="stamp">Snapshot: Thu, Oct 1, 2026 · 4:36 PM ET</div>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <div class="label">Battery</div>
+      <div class="big" id="batt-pct">72%</div>
+      <div class="bar"><div class="fill" id="batt-fill" style="width:72%"></div></div>
+      <div class="sub">224 mi range remaining</div>
+      <div class="sub">Round-trip estimate: 63%</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Climate</div>
+      <div class="big">65°F</div>
+      <div class="sub">Cabin · Outside 85°F</div>
+      <dl>
+        <dt>HVAC</dt><dd class="on">On</dd>
+        <dt>Fan speed</dt><dd>5</dd>
+        <dt>Sync</dt><dd class="on">On</dd>
+        <dt>Driver / Passenger</dt><dd>65°F / 65°F</dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <div class="label">Comfort</div>
+      <dl>
+        <dt>Seat heaters</dt><dd class="off">Off</dd>
+        <dt>Seat coolers</dt><dd class="off">Off</dd>
+        <dt>Steering wheel heater</dt><dd class="off">Off</dd>
+        <dt>Defrost / Defog</dt><dd class="off">Off</dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <div class="label">Location</div>
+      <div class="big" style="font-size:32px">River Rd</div>
+      <div class="sub">Potomac, MD</div>
+      <div class="sub">Not at home · Not at work</div>
+    </div>
+  </div>
+
+  <h2>Now Playing</h2>
+  <div class="card">
+    <div class="track">The DTCC XRP Shift: Is This the Catalyst You've Been Waiting For?</div>
+    <div class="sub">Digital Perspectives · Bluetooth</div>
+  </div>
+
+  <h2>Software</h2>
+  <div class="grid">
+    <div class="card">
+      <div><span class="tag latest">Latest</span><strong>FSD (Supervised) v14.3.10</strong></div>
+      <ul class="features">
+        <li>RL upgrade</li>
+        <li>MLIR runtime (20% faster reactions)</li>
+        <li>Better parking selection</li>
+        <li>Improved emergency vehicle response</li>
+        <li>Actually Smart Summon up to 8 mph</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div><span class="tag new">New</span><strong>Automatic Collision Evasion</strong></div>
+      <p class="sub" style="margin-top:10px">Engages FSD on an imminent frontal collision or dropped driver attention.</p>
+    </div>
+  </div>
+
+  <footer>Static snapshot. Values do not update live.</footer>
+
+  <script>
+    (function () {
+      var pct = parseInt(document.getElementById("batt-pct").textContent, 10);
+      if (pct <= 20) document.getElementById("batt-fill").classList.add("low");
+    })();
+  </script>
+</body>
+</html>

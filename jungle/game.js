@@ -178,9 +178,18 @@
         const d = noiseBuf.getChannelData(0);
         for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       }
-      if (AC.state === 'suspended') AC.resume();
+      if (AC.state !== 'running') AC.resume();
+      // iOS: play a 1-sample silent buffer inside the gesture to fully unlock output
+      const b = AC.createBuffer(1, 1, 22050), s = AC.createBufferSource();
+      s.buffer = b; s.connect(AC.destination); s.start(0);
     } catch (e) { /* audio unavailable */ }
   }
+  // iOS 17+: treat as media playback so sound isn't muted by the Silent switch
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* ignore */ }
+  // iOS only grants audio on touchend/pointerup/click, not touchstart/pointerdown; unlock on all of them
+  ['touchend', 'pointerup', 'click', 'keydown'].forEach(t => document.addEventListener(t, () => {
+    if (!AC || AC.state !== 'running') initAudio();
+  }, { capture: true, passive: true }));
   const mf = m => 440 * Math.pow(2, (m - 69) / 12);
   function tone(f, d, type, v, f2, t0) {
     if (!AC || AC.state !== 'running') return;

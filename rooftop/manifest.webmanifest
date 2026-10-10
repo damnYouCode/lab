@@ -1,0 +1,15 @@
+{
+  "name": "Rooftop Nerf Battle",
+  "short_name": "Rooftop",
+  "description": "An original rooftop foam-dart dodging game: survive from sunrise to midnight.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#000000",
+  "theme_color": "#120d22",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

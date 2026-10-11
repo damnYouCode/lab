@@ -1,4 +1,4 @@
-// Rooftop Nerf Battle - an original foam-dart dodging game.
+// Dart Dodger - an original, friendly foam-dart dodging game.
 // All art is drawn procedurally / from pixel arrays below; all sound is synthesized with WebAudio.
 (function () {
   'use strict';
@@ -104,7 +104,7 @@
       '............', '..KKKKKK....', '.KCCCCCCK...', 'KCCCCCCCCKK.', '.KHSSSSSKK..', '.KSKSSKSK...', '.KSSSSSSK...', '..KSKKSK....',
       'KSKJJJJJJKSK', 'KJKJJJJJJKJK', '.KJJJJJJJJK.', '..KjjjjjjK..', '..KPPPPPPK..', '.KPPK..KPPK.', 'KPPK....KPPK', 'KBBK....KBBK', 'KKKK....KKKK', '............'], PPAL)
   };
-  const BPAL = { K: '#16121f', M: '#9aa3b8', m: '#5d6580', V: '#7ff6ff', R: '#ff4060', O: '#ff9a2e' };
+  const BPAL = { K: '#16121f', M: '#9aa3b8', m: '#5d6580', V: '#7ff6ff', R: '#ffd84a', O: '#ff9a2e' };
   const BOT = spr([
     '......K.......', '......R.......', '......K.......', '...KKKKKKKK...', '..KMMMMMMMMK..', '..KMKKKKKKMK..',
     '..KMKVVVVKMK..', '..KMKKKKKKMK..', '..KMMMMMMMMK..', '...KKKKKKKK...', '..KmOOOOOOmK..', '.KmmmmmmmmmmK.',
@@ -599,7 +599,7 @@
       else { e.x = e.bx; e.y = e.by + k * 24; }
       e.recoil = Math.max(0, e.recoil - dt * 6);
       e.cd = Math.max(0, e.cd - dt);
-      const [px, py] = enemyPivot(e);   // blaster tracks the player
+      const [px, py] = enemyPivot(e);   // dart launcher follows the player
       const want = Math.atan2(P.y - 16 - py, P.x - px);
       let d = want - e.ang; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
       e.ang += d * Math.min(1, dt * 5);
@@ -813,7 +813,7 @@
     }
     ctx.restore();
   }
-  function drawBlaster(e, px, py) {   // generic chunky foam blaster that tracks the player
+  function drawBlaster(e, px, py) {   // chunky toy foam-dart launcher that follows the player
     ctx.save(); ctx.translate(px, py); ctx.rotate(e.ang);
     const rk = -e.recoil * 3;
     ctx.fillStyle = sh('#2b2440'); ctx.fillRect(rk - 4, -4, 16, 8);
@@ -953,7 +953,7 @@
     if (G.bannerT > 0 && G.state === 'play') {
       ctx.globalAlpha = clamp(G.bannerT, 0, 1);
       txt(G.banner, cx, 112, 30, PHASE_COL[G.phase], 'center', '#1b1626');
-      txt(['THE CITY WAKES UP', 'FULL SUN - THE DARTS SPEED UP', 'DUSK - WATCH FOR THE RED GLOW', 'SURVIVE UNTIL MIDNIGHT!'][G.phase], cx, 138, 12, '#ffffff', 'center', '#1b1626');
+      txt(['THE CITY WAKES UP', 'FULL SUN - THE DARTS SPEED UP', 'DUSK - WATCH FOR THE RED GLOW', 'MAKE IT TO MIDNIGHT!'][G.phase], cx, 138, 12, '#ffffff', 'center', '#1b1626');
       ctx.globalAlpha = 1;
     }
     if (FINE && G.hintT > 0 && G.state === 'play') {
@@ -1003,8 +1003,8 @@
   function drawTitle() {
     ctx.fillStyle = 'rgba(8,6,20,0.35)'; ctx.fillRect(0, 0, W, H);
     ctx.save(); ctx.translate(W / 2, 72); ctx.rotate(-0.035);
-    txt('ROOFTOP', 0, -14, 40, '#ffe45c', 'center', '#2a1650');
-    txt('NERF BATTLE', 0, 26, 32, '#7ff6ff', 'center', '#2a1650');
+    txt('DART', 0, -14, 40, '#ffe45c', 'center', '#2a1650');
+    txt('DODGER', 0, 26, 36, '#7ff6ff', 'center', '#2a1650');
     ctx.restore();
     txt('Dodge the foam darts from sunrise to midnight!', W / 2, 126, 13, '#ffffff', 'center', '#1b1626', 700);
     panel(W / 2 - 175, 142, 350, 88);
@@ -1019,8 +1019,8 @@
     const won = G.state === 'win';
     ctx.fillStyle = won ? 'rgba(8,6,20,0.3)' : 'rgba(40,0,10,0.4)'; ctx.fillRect(0, 0, W, H);
     panel(W / 2 - 165, 70, 330, 196);
-    txt(won ? 'MIDNIGHT! YOU WIN' : 'SPLAT! GAME OVER', W / 2, 100, 26, won ? '#ffe45c' : '#ff6b8a', 'center', '#1b1626');
-    txt(won ? 'You survived the whole day on the roof' : 'Tagged at ' + clockStr(G.t) + ' (' + PHASE_NAMES[G.phase].toLowerCase() + ')', W / 2, 130, 12, '#ffffff', 'center', null, 700);
+    txt(won ? 'YOU MADE IT!' : 'SPLAT! TAGGED OUT!', W / 2, 100, 26, won ? '#ffe45c' : '#ff6b8a', 'center', '#1b1626');
+    txt(won ? 'You made it to midnight! Super dodging!' : 'Nice try! Tagged at ' + clockStr(G.t) + ' (' + PHASE_NAMES[G.phase].toLowerCase() + ')', W / 2, 130, 12, '#ffffff', 'center', null, 700);
     txt('SCORE ' + G.score, W / 2, 160, 22, '#ffffff', 'center', null, 800);
     txt((G.newBest ? 'NEW BEST! ' : 'BEST ') + G.hi, W / 2, 188, 15, '#ffe45c', 'center', null, 800);
     txt('Darts dodged ' + G.dodged + '    Super dodged ' + G.superDodged, W / 2, 212, 11, '#cfe9ff', 'center', null, 600);

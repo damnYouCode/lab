@@ -1,7 +1,7 @@
 {
-  "name": "Rooftop Nerf Battle",
-  "short_name": "Rooftop",
-  "description": "An original rooftop foam-dart dodging game: survive from sunrise to midnight.",
+  "name": "Dart Dodger",
+  "short_name": "Dart Dodger",
+  "description": "A friendly rooftop game: dodge the foam darts the robots toss, from sunrise to midnight!",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -71,8 +71,11 @@
   #rotate svg { width: 96px; height: 96px; animation: tilt 1.8s ease-in-out infinite; }
   @keyframes tilt { 0%,30% { transform: rotate(0deg); } 60%,100% { transform: rotate(-90deg); } }
 </style>
+<style>#splash{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;background:#c98a4a url(splash-bg.jpg) center/cover;transition:opacity .6s}#splash img{width:min(44vmin,320px);height:auto;border-radius:22%;box-shadow:0 10px 40px rgba(0,0,0,.35)}#splash.gone{opacity:0;pointer-events:none}</style>
 </head>
 <body>
+<div id="splash"><img src="splash-icon.png" alt="Dart Dodger"></div>
+<script>setTimeout(function(){var s=document.getElementById('splash');s.classList.add('gone');setTimeout(function(){s.remove()},700)},1500)</script>
 <div id="stage"><div id="fit"><canvas id="screen" width="640" height="360"></canvas></div></div>
 <div id="ui">
   <div class="btn hide" id="bS"><div>SHIELD</div><span id="bSs">LOCKED</span><div class="key">[S]</div></div>

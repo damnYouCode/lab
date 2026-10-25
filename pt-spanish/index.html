@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Spanish phrase practice for pediatric physical therapists working with Latin American families. Language practice only—not medical advice.">
+  <title>PT Spanish · Pediatric phrases</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a222c;
+      --panel-hover: #212b36;
+      --text: #e7ecf1;
+      --muted: #9aa7b5;
+      --accent: #6ee7b7;
+      --accent-dim: #3d9a74;
+      --line: #2a3542;
+      --warn: #fbbf24;
+      --reveal: #93c5fd;
+      --ok: #6ee7b7;
+      --bad: #f87171;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(1200px 600px at 10% -10%, #1c2a24 0%, var(--bg) 55%);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap {
+      max-width: 42rem;
+      margin: 0 auto;
+      padding: 1.5rem 1.1rem 4rem;
+    }
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.75rem;
+      color: var(--accent);
+      margin: 0 0 0.4rem;
+    }
+    h1 {
+      font-size: clamp(1.7rem, 5vw, 2.4rem);
+      margin: 0 0 0.6rem;
+      letter-spacing: -0.02em;
+    }
+    .lede { color: var(--muted); margin: 0 0 1rem; font-size: 0.98rem; }
+    .disclaimer {
+      background: rgba(251, 191, 36, 0.08);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      border-radius: 0.6rem;
+      padding: 0.75rem 0.9rem;
+      color: var(--warn);
+      font-size: 0.88rem;
+      margin: 0 0 1.25rem;
+    }
+    .convention {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 0.6rem;
+      padding: 0.75rem 0.9rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin: 0 0 1.5rem;
+    }
+    .convention strong { color: var(--text); }
+    .howto {
+      margin: 0 0 1.5rem;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 0.4rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .howto li::before {
+      content: "→ ";
+      color: var(--accent);
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(15, 20, 25, 0.92);
+      backdrop-filter: blur(8px);
+      padding: 0.65rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .toolbar button, .mode-btn {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .toolbar button:hover, .mode-btn:hover { border-color: var(--accent-dim); }
+    .toolbar button.active, .mode-btn.active {
+      background: var(--accent);
+      color: #062016;
+      border-color: var(--accent);
+    }
+    .search {
+      flex: 1 1 10rem;
+      min-width: 8rem;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--text);
+      padding: 0.45rem 0.9rem;
+      font-size: 0.9rem;
+    }
+    .search:focus { outline: 2px solid var(--accent-dim); outline-offset: 1px; }
+    .nav-sections {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 1.5rem;
+    }
+    .nav-sections a {
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-decoration: none;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0.3rem 0.65rem;
+      background: var(--panel);
+    }
+    .nav-sections a:hover { color: var(--accent); border-color: var(--accent-dim); }
+    section.lesson {
+      margin-bottom: 2rem;
+      scroll-margin-top: 4rem;
+    }
+    section.lesson h2 {
+      font-size: 1.1rem;
+      margin: 0 0 0.75rem;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 0.5rem;
+    }
+    .count {
+      color: var(--muted);
+      font-weight: 400;
+      font-size: 0.85rem;
+    }
+    .phrases { display: grid; gap: 0.55rem; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 0.65rem;
+      padding: 0.85rem 1rem;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      text-align: left;
+      width: 100%;
+      color: inherit;
+      font: inherit;
+    }
+    .card:hover { background: var(--panel-hover); }
+    .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .es {
+      font-size: 1.08rem;
+      font-weight: 600;
+      margin: 0 0 0.2rem;
+    }
+    .phon {
+      font-size: 0.88rem;
+      color: var(--reveal);
+      font-style: italic;
+      margin: 0 0 0.35rem;
+    }
+    .en {
+      font-size: 0.92rem;
+      color: var(--muted);
+      margin: 0;
+    }
+    .card.hidden-en .en { filter: blur(5px); user-select: none; }
+    .card.hidden-en.revealed .en { filter: none; user-select: auto; color: var(--accent); }
+    .tap-hint {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-top: 0.45rem;
+      opacity: 0.7;
+    }
+    .card.revealed .tap-hint { display: none; }
+
+    /* Quiz */
+    #quiz-panel {
+      display: none;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    #quiz-panel.visible { display: block; }
+    #lessons-panel.hidden { display: none; }
+    .quiz-prompt { font-size: 1.15rem; font-weight: 600; margin: 0 0 0.35rem; }
+    .quiz-sub { color: var(--muted); font-size: 0.9rem; margin: 0 0 1rem; }
+    .quiz-options { display: grid; gap: 0.5rem; }
+    .quiz-options button {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+    }
+    .quiz-options button:hover:not(:disabled) { border-color: var(--accent-dim); }
+    .quiz-options button.correct { border-color: var(--ok); background: rgba(110, 231, 183, 0.12); }
+    .quiz-options button.wrong { border-color: var(--bad); background: rgba(248, 113, 113, 0.1); }
+    .quiz-options button:disabled { cursor: default; opacity: 0.9; }
+    .quiz-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1rem;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .quiz-score { color: var(--muted); font-size: 0.9rem; }
+    .quiz-next {
+      background: var(--accent);
+      color: #062016;
+      border: 0;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      padding: 0.55rem 1rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .quiz-next:disabled { opacity: 0.4; cursor: default; }
+    .empty {
+      color: var(--muted);
+      font-size: 0.95rem;
+      padding: 1rem 0;
+    }
+    footer {
+      margin-top: 2.5rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--line);
+      padding-top: 1.25rem;
+    }
+    footer a { color: var(--accent); }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0); border: 0;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <p class="eyebrow">Lab · Language practice</p>
+      <h1>PT Spanish for kids &amp; families</h1>
+      <p class="lede">Custom phrase bank for a pediatric physical therapist working with Latin American Spanish-speaking families—standing, sitting, swallowing, home exercises, and encouragement. Not a full course; short phrases you can tap and rehearse before a session.</p>
+      <p class="disclaimer"><strong>Language practice only.</strong> This page is not medical advice, diagnosis, or clinical guidance. Use your professional judgment; confirm wording with a qualified interpreter when needed.</p>
+      <div class="convention">
+        <strong>Convention:</strong> Latin American Spanish (e.g. <em>computadora</em>, not <em>ordenador</em>). Forms use <strong>usted</strong> with parents/caregivers for respect in a clinical setting. With the child you can soften tone; many phrases below work for both.
+      </div>
+      <ul class="howto">
+        <li><strong>Browse</strong> by section, or search above the list.</li>
+        <li><strong>Tap a card</strong> to reveal / hide the English (practice mode).</li>
+        <li><strong>Quiz</strong> shows English; pick the matching Spanish.</li>
+        <li>Phonetics are approximate US-English hints—not IPA.</li>
+      </ul>
+    </header>
+
+    <div class="toolbar" role="toolbar" aria-label="Study modes">
+      <button type="button" class="mode-btn active" id="btn-browse" aria-pressed="true">Browse</button>
+      <button type="button" class="mode-btn" id="btn-quiz" aria-pressed="false">Quiz</button>
+      <button type="button" id="btn-reveal-all" title="Show or hide all English">Reveal all</button>
+      <label class="sr-only" for="search">Search phrases</label>
+      <input class="search" id="search" type="search" placeholder="Search Spanish or English…" autocomplete="off">
+    </div>
+
+    <nav class="nav-sections" id="section-nav" aria-label="Lessons"></nav>
+
+    <div id="quiz-panel" aria-live="polite">
+      <p class="quiz-prompt" id="quiz-q"></p>
+      <p class="quiz-sub" id="quiz-hint">Choose the Spanish that matches:</p>
+      <div class="quiz-options" id="quiz-opts"></div>
+      <div class="quiz-meta">
+        <span class="quiz-score" id="quiz-score">Score: 0 / 0</span>
+        <button type="button" class="quiz-next" id="quiz-next" disabled>Next</button>
+      </div>
+    </div>
+
+    <div id="lessons-panel"></div>
+
+    <footer>
+      <p>Vanilla HTML/JS · Matches lab dark theme · Ready for <code>damnyoucode.github.io/lab/pt-spanish/</code> when you approve publish.</p>
+      <p><a href="../">← Lab home</a></p>
+    </footer>
+  </main>
+
+  <script>
+(function () {
+  const SECTIONS = [
+    {
+      id: "greetings",
+      title: "1. Greetings & intro as PT",
+      phrases: [
+        { es: "Buenos días. Soy la terapeuta física de su hijo/a.", phon: "BWEH-nos DEE-ahs. soy lah teh-rah-PEW-tah FEE-see-kah deh soo EE-ho/ah", en: "Good morning. I am your child's physical therapist." },
+        { es: "Mucho gusto. ¿Cómo se llama su hijo/a?", phon: "MOO-choh GOOS-toh. KOH-moh seh YAH-mah soo EE-ho/ah", en: "Nice to meet you. What is your child's name?" },
+        { es: "Hoy vamos a trabajar en el equilibrio y la fuerza.", phon: "oy VAH-mohs ah trah-bah-HAR en el eh-kee-lee-BREE-oh ee lah FWER-sah", en: "Today we are going to work on balance and strength." },
+        { es: "¿Tiene alguna pregunta antes de empezar?", phon: "tee-EH-neh ahl-GOO-nah preh-GOON-tah AHN-tehs deh ehm-peh-SAR", en: "Do you have any questions before we start?" },
+        { es: "Por favor, siéntese aquí con su hijo/a.", phon: "por fah-BOR, see-EN-teh-seh ah-KEE kon soo EE-ho/ah", en: "Please sit here with your child." },
+        { es: "Voy a explicarle lo que vamos a hacer hoy.", phon: "voy ah eks-plee-KAR-leh lo keh VAH-mohs ah ah-SER oy", en: "I am going to explain what we will do today." },
+        { es: "¿Habla usted inglés, o prefiere español?", phon: "AH-blah oos-TED een-GLEHS, oh preh-fee-EH-reh ehs-pah-NYOL", en: "Do you speak English, or do you prefer Spanish?" }
+      ]
+    },
+    {
+      id: "body",
+      title: "2. Body parts (kids)",
+      phrases: [
+        { es: "la cabeza", phon: "lah kah-BEH-sah", en: "head" },
+        { es: "el cuello", phon: "el KWEH-yoh", en: "neck" },
+        { es: "los hombros", phon: "los OM-bros", en: "shoulders" },
+        { es: "los brazos", phon: "los BRAH-sos", en: "arms" },
+        { es: "los codos", phon: "los KOH-dos", en: "elbows" },
+        { es: "las manos", phon: "las MAH-nos", en: "hands" },
+        { es: "los dedos", phon: "los DEH-dos", en: "fingers / toes (context)" },
+        { es: "la espalda", phon: "lah ehs-PAHL-dah", en: "back" },
+        { es: "la cadera / las caderas", phon: "lah kah-DEH-rah / las kah-DEH-rahs", en: "hip / hips" },
+        { es: "las piernas", phon: "las pee-EHR-nahs", en: "legs" },
+        { es: "las rodillas", phon: "las roh-DEE-yahs", en: "knees" },
+        { es: "los tobillos", phon: "los toh-BEE-yos", en: "ankles" },
+        { es: "los pies", phon: "los pee-EHS", en: "feet" },
+        { es: "la boca", phon: "lah BOH-kah", en: "mouth" },
+        { es: "la lengua", phon: "lah LEN-gwah", en: "tongue" },
+        { es: "Muéstreme dónde le duele.", phon: "mwehs-TREH-meh DOHN-deh leh DWEH-leh", en: "Show me where it hurts." },
+        { es: "Toca tu rodilla. ¡Muy bien!", phon: "TOH-kah too roh-DEE-yah. mwee bee-EN", en: "Touch your knee. Very good! (to child, tú)" }
+      ]
+    },
+    {
+      id: "positions",
+      title: "3. Positions: sit / stand / lie / kneel",
+      phrases: [
+        { es: "Siéntese, por favor.", phon: "see-EN-teh-seh, por fah-BOR", en: "Please sit down. (usted)" },
+        { es: "Siéntate aquí.", phon: "see-EN-tah-teh ah-KEE", en: "Sit here. (to child, tú)" },
+        { es: "Póngase de pie / Párese.", phon: "PON-gah-seh deh pee-EH / PAH-reh-seh", en: "Stand up. (usted; párese common in LatAm)" },
+        { es: "Párate, por favor.", phon: "PAH-rah-teh, por fah-BOR", en: "Stand up, please. (to child)" },
+        { es: "Acuéstese boca arriba.", phon: "ah-KWES-teh-seh BOH-kah ah-REE-bah", en: "Lie on your back." },
+        { es: "Acuéstese boca abajo.", phon: "ah-KWES-teh-seh BOH-kah ah-BAH-ho", en: "Lie on your stomach." },
+        { es: "Acuéstese de lado.", phon: "ah-KWES-teh-seh deh LAH-doh", en: "Lie on your side." },
+        { es: "Arrodíllese / Póngase de rodillas.", phon: "ah-roh-DEE-yeh-seh / PON-gah-seh deh roh-DEE-yahs", en: "Kneel / Get on your knees." },
+        { es: "Quédese sentado/a un momento.", phon: "KEH-deh-seh sen-TAH-doh/dah oon moh-MEN-toh", en: "Stay seated for a moment." },
+        { es: "Mantenga los pies en el piso.", phon: "mahn-TEN-gah los pee-EHS en el PEE-soh", en: "Keep your feet on the floor." },
+        { es: "Enderece la espalda.", phon: "en-deh-REH-seh lah ehs-PAHL-dah", en: "Straighten your back." },
+        { es: "Apóyese en mis manos.", phon: "ah-POY-eh-seh en mees MAH-nos", en: "Lean on / push into my hands." }
+      ]
+    },
+    {
+      id: "movements",
+      title: "4. Movements: bend, reach, walk, swallow, chew",
+      phrases: [
+        { es: "Doble las rodillas.", phon: "DOH-bleh las roh-DEE-yahs", en: "Bend your knees." },
+        { es: "Estire las piernas.", phon: "ehs-TEE-reh las pee-EHR-nahs", en: "Straighten / stretch your legs." },
+        { es: "Alcance hacia arriba.", phon: "ahl-KAHN-cheh AH-see-ah ah-REE-bah", en: "Reach up." },
+        { es: "Alcance hacia adelante.", phon: "ahl-KAHN-cheh AH-see-ah ah-deh-LAHN-teh", en: "Reach forward." },
+        { es: "Camine hacia mí.", phon: "kah-MEE-neh AH-see-ah mee", en: "Walk toward me." },
+        { es: "Dé un paso grande.", phon: "deh oon PAH-soh GRAHN-deh", en: "Take a big step." },
+        { es: "Dé un pasito.", phon: "deh oon pah-SEE-toh", en: "Take a little step." },
+        { es: "Salte / Brinque.", phon: "SAHL-teh / BREEN-keh", en: "Jump. (brinque common LatAm)" },
+        { es: "Gire a la derecha / a la izquierda.", phon: "HEE-reh ah lah deh-REH-chah / ah lah ees-KYEHR-dah", en: "Turn right / left." },
+        { es: "Empuje / Empujen juntos.", phon: "em-POO-heh / em-POO-hen HOON-tos", en: "Push / Push together." },
+        { es: "Jale / Hale hacia usted.", phon: "HAH-leh / AH-leh AH-see-ah oos-TED", en: "Pull toward yourself. (hale also LatAm)" },
+        { es: "Trague / Traguito despacio.", phon: "TRAH-geh / trah-GEE-toh dehs-PAH-see-oh", en: "Swallow / Little swallow, slowly." },
+        { es: "Mastique bien antes de tragar.", phon: "mahs-TEE-keh bee-EN AHN-tehs deh trah-GAR", en: "Chew well before swallowing." },
+        { es: "Abra la boca. Cierre la boca.", phon: "AH-brah lah BOH-kah. see-EH-reh lah BOH-kah", en: "Open your mouth. Close your mouth." },
+        { es: "Levante los brazos.", phon: "leh-VAHN-teh los BRAH-sos", en: "Raise your arms." },
+        { es: "Baje los brazos despacio.", phon: "BAH-heh los BRAH-sos dehs-PAH-see-oh", en: "Lower your arms slowly." }
+      ]
+    },
+    {
+      id: "instructions",
+      title: "5. Giving simple instructions",
+      phrases: [
+        { es: "Míreme, por favor.", phon: "MEE-reh-meh, por fah-BOR", en: "Look at me, please." },
+        { es: "Escuche con atención.", phon: "ehs-KOO-cheh kon ah-ten-see-ON", en: "Listen carefully." },
+        { es: "Repita después de mí.", phon: "reh-PEE-tah dehs-PWEHS deh mee", en: "Repeat after me." },
+        { es: "Más despacio, por favor.", phon: "mahs dehs-PAH-see-oh, por fah-BOR", en: "More slowly, please." },
+        { es: "Un poquito más.", phon: "oon poh-KEE-toh mahs", en: "A little bit more." },
+        { es: "Otra vez.", phon: "OH-trah vehs", en: "One more time / again." },
+        { es: "Espere un momento.", phon: "ehs-PEH-reh oon moh-MEN-toh", en: "Wait a moment." },
+        { es: "Ayúdele así…", phon: "ah-YOO-deh-leh ah-SEE", en: "Help him/her like this…" },
+        { es: "Sujete sus manos aquí.", phon: "soo-HEH-teh soos MAH-nos ah-KEE", en: "Hold his/her hands here." },
+        { es: "No se preocupe; yo le ayudo.", phon: "noh seh preh-oh-KOO-peh; yoh leh ah-YOO-doh", en: "Don't worry; I'll help you." },
+        { es: "Primero esto, después aquello.", phon: "pree-MEH-roh EHS-toh, dehs-PWEHS ah-KEH-yoh", en: "First this, then that." },
+        { es: "¿Me entiende? ¿Sí o no?", phon: "meh en-tee-EN-deh? see oh noh", en: "Do you understand me? Yes or no?" }
+      ]
+    },
+    {
+      id: "comfort",
+      title: "6. Pain & comfort check-ins",
+      phrases: [
+        { es: "¿Le duele?", phon: "leh DWEH-leh", en: "Does it hurt?" },
+        { es: "¿Dónde le duele?", phon: "DOHN-deh leh DWEH-leh", en: "Where does it hurt?" },
+        { es: "¿Duele mucho o poquito?", phon: "DWEH-leh MOO-choh oh poh-KEE-toh", en: "Does it hurt a lot or a little?" },
+        { es: "Dígame si siente dolor.", phon: "DEE-gah-meh see see-EN-teh doh-LOR", en: "Tell me if you feel pain." },
+        { es: "¿Está cómodo/a?", phon: "ehs-TAH KOH-moh-doh/dah", en: "Are you comfortable?" },
+        { es: "¿Quiere descansar un momento?", phon: "kee-EH-reh dehs-kahn-SAR oon moh-MEN-toh", en: "Do you want to rest a moment?" },
+        { es: "Si duele demasiado, paramos.", phon: "see DWEH-leh deh-mah-see-AH-doh, pah-RAH-mohs", en: "If it hurts too much, we stop." },
+        { es: "Respire hondo. Inhale… exhale…", phon: "rehs-PEE-reh ON-doh. een-AH-leh… eks-AH-leh…", en: "Breathe deeply. Inhale… exhale…" },
+        { es: "¿Cómo se siente ahora?", phon: "KOH-moh seh see-EN-teh ah-OH-rah", en: "How do you feel now?" },
+        { es: "Está bien decir que no.", phon: "ehs-TAH bee-EN deh-SEER keh noh", en: "It's okay to say no." },
+        { es: "Voy a tocarlo/a suavemente.", phon: "voy ah toh-KAR-loh/lah swah-veh-MEN-teh", en: "I am going to touch him/her gently." },
+        { es: "Avíseme si necesita un descanso.", phon: "ah-VEE-seh-meh see neh-seh-SEE-tah oon dehs-KAHN-soh", en: "Let me know if you need a break." }
+      ]
+    },
+    {
+      id: "homework",
+      title: "7. Home exercise / homework talk",
+      phrases: [
+        { es: "Estos son los ejercicios para la casa.", phon: "EHS-tos son los eh-hehr-SEE-see-ohs PAH-rah lah KAH-sah", en: "These are the home exercises." },
+        { es: "Háganlos dos veces al día.", phon: "AH-gan-los dos VEH-sehs ahl DEE-ah", en: "Do them twice a day." },
+        { es: "Cada sesión: cinco a diez minutos.", phon: "KAH-dah seh-see-ON: SEEN-koh ah dee-EHS mee-NOO-tos", en: "Each session: five to ten minutes." },
+        { es: "Practiquen en un lugar seguro.", phon: "prak-TEE-ken en oon loo-GAR seh-GOO-roh", en: "Practice in a safe place." },
+        { es: "Acompañe a su hijo/a; no lo deje solo/a.", phon: "ah-kom-PAH-nye ah soo EE-ho/ah; noh lo DEH-heh SOH-lo/lah", en: "Stay with your child; don't leave him/her alone." },
+        { es: "Anote cómo le fue en esta hoja.", phon: "ah-NOH-teh KOH-moh leh fweh en EHS-tah OH-hah", en: "Write down how it went on this sheet." },
+        { es: "Si algo no sale bien, párense y avísenme.", phon: "see AHL-goh noh SAH-leh bee-EN, PAH-ren-seh ee ah-VEE-sen-meh", en: "If something doesn't go well, stop and let me know." },
+        { es: "La próxima cita es el…", phon: "lah PROK-see-mah SEE-tah ehs el…", en: "The next appointment is on…" },
+        { es: "¿Puede practicar esto en casa?", phon: "PWEH-deh prak-tee-KAR EHS-toh en KAH-sah", en: "Can you practice this at home?" },
+        { es: "Le voy a mostrar el movimiento otra vez.", phon: "leh voy ah mohl-STRAR el moh-vee-mee-EN-toh OH-trah vehs", en: "I am going to show you the movement again." },
+        { es: "Use un juguete para motivarlo/a.", phon: "OO-seh oon hoo-GEH-teh PAH-rah moh-tee-VAR-loh/lah", en: "Use a toy to motivate him/her." },
+        { es: "Cualquier duda, llámenos o mándenos un mensaje.", phon: "kwahl-kee-EHR DOO-dah, YAH-meh-nos oh MAHN-deh-nos oon men-SAH-heh", en: "Any questions, call us or send us a message." }
+      ]
+    },
+    {
+      id: "encourage",
+      title: "8. Encouragement & closing",
+      phrases: [
+        { es: "¡Muy bien!", phon: "mwee bee-EN", en: "Very good!" },
+        { es: "¡Excelente trabajo!", phon: "ek-seh-LEN-teh trah-BAH-ho", en: "Excellent work!" },
+        { es: "¡Lo estás haciendo muy bien!", phon: "lo ehs-TAHS ah-see-EN-doh mwee bee-EN", en: "You're doing great! (to child, tú)" },
+        { es: "Un poquito más… ¡ya casi!", phon: "oon poh-KEE-toh mahs… yah KAH-see", en: "A little more… almost there!" },
+        { es: "Estoy orgullosa/orgulloso de ti.", phon: "ehs-TOY or-goo-YOH-sah/soh deh tee", en: "I'm proud of you. (to child)" },
+        { es: "Gracias por su paciencia y ayuda.", phon: "GRAH-see-ahs por soo pah-see-EN-see-ah ee ah-YOO-dah", en: "Thank you for your patience and help." },
+        { es: "Su hijo/a progresó mucho hoy.", phon: "soo EE-ho/ah proh-greh-SOH MOO-choh oy", en: "Your child progressed a lot today." },
+        { es: "Hasta la próxima vez.", phon: "AHS-tah lah PROK-see-mah vehs", en: "Until next time." },
+        { es: "Que tengan un buen día.", phon: "keh TEN-gahn oon bwen DEE-ah", en: "Have a good day. (plural family)" },
+        { es: "Cuídense. Nos vemos pronto.", phon: "kwee-DEN-seh. nos VEH-mohs PRON-toh", en: "Take care. See you soon." },
+        { es: "¡Ánimo! Ustedes lo están haciendo muy bien.", phon: "AH-nee-moh! oos-TEH-dehs lo ehs-TAHN ah-see-EN-doh mwee bee-EN", en: "Hang in there! You all are doing great." },
+        { es: "Fue un placer trabajar con ustedes.", phon: "fweh oon plah-SEHR trah-bah-HAR kon oos-TEH-dehs", en: "It was a pleasure working with you." }
+      ]
+    }
+  ];
+
+  const lessonsEl = document.getElementById("lessons-panel");
+  const navEl = document.getElementById("section-nav");
+  const searchEl = document.getElementById("search");
+  const quizPanel = document.getElementById("quiz-panel");
+  const btnBrowse = document.getElementById("btn-browse");
+  const btnQuiz = document.getElementById("btn-quiz");
+  const btnRevealAll = document.getElementById("btn-reveal-all");
+
+  let hideEnglish = true;
+  let allRevealed = false;
+  let quizState = { score: 0, total: 0, answered: false };
+
+  function flatPhrases() {
+    return SECTIONS.flatMap(s => s.phrases.map(p => ({ ...p, section: s.title })));
+  }
+
+  function renderNav() {
+    navEl.innerHTML = SECTIONS.map(s =>
+      `<a href="#${s.id}">${s.title.replace(/^\d+\.\s*/, "")}</a>`
+    ).join("");
+  }
+
+  function matchesQuery(p, q) {
+    if (!q) return true;
+    const hay = (p.es + " " + p.en + " " + p.phon).toLowerCase();
+    return hay.includes(q);
+  }
+
+  function renderLessons(query) {
+    const q = (query || "").trim().toLowerCase();
+    let html = "";
+    let any = false;
+    SECTIONS.forEach(sec => {
+      const list = sec.phrases.filter(p => matchesQuery(p, q));
+      if (!list.length) return;
+      any = true;
+      html += `<section class="lesson" id="${sec.id}">
+        <h2>${sec.title} <span class="count">(${list.length})</span></h2>
+        <div class="phrases">`;
+      list.forEach((p, i) => {
+        const hideClass = hideEnglish && !allRevealed ? "hidden-en" : "";
+        const revClass = allRevealed ? "revealed" : "";
+        html += `<button type="button" class="card ${hideClass} ${revClass}" data-sec="${sec.id}" data-i="${i}" aria-label="Phrase: ${escapeAttr(p.es)}">
+          <p class="es">${escapeHtml(p.es)}</p>
+          <p class="phon">${escapeHtml(p.phon)}</p>
+          <p class="en">${escapeHtml(p.en)}</p>
+          ${hideEnglish && !allRevealed ? '<p class="tap-hint">Tap to reveal English</p>' : ""}
+        </button>`;
+      });
+      html += `</div></section>`;
+    });
+    if (!any) html = '<p class="empty">No phrases match that search.</p>';
+    lessonsEl.innerHTML = html;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+  function escapeAttr(s) {
+    return escapeHtml(s).replace(/"/g, "&quot;");
+  }
+
+  lessonsEl.addEventListener("click", (e) => {
+    const card = e.target.closest(".card");
+    if (!card || !hideEnglish) return;
+    card.classList.toggle("revealed");
+    const hint = card.querySelector(".tap-hint");
+    if (hint) hint.style.display = card.classList.contains("revealed") ? "none" : "";
+  });
+
+  searchEl.addEventListener("input", () => {
+    if (btnBrowse.classList.contains("active")) renderLessons(searchEl.value);
+  });
+
+  btnRevealAll.addEventListener("click", () => {
+    allRevealed = !allRevealed;
+    btnRevealAll.textContent = allRevealed ? "Hide English" : "Reveal all";
+    btnRevealAll.classList.toggle("active", allRevealed);
+    renderLessons(searchEl.value);
+  });
+
+  function setMode(mode) {
+    const isQuiz = mode === "quiz";
+    btnBrowse.classList.toggle("active", !isQuiz);
+    btnQuiz.classList.toggle("active", isQuiz);
+    btnBrowse.setAttribute("aria-pressed", String(!isQuiz));
+    btnQuiz.setAttribute("aria-pressed", String(isQuiz));
+    quizPanel.classList.toggle("visible", isQuiz);
+    lessonsEl.classList.toggle("hidden", isQuiz);
+    document.getElementById("section-nav").style.display = isQuiz ? "none" : "";
+    btnRevealAll.style.display = isQuiz ? "none" : "";
+    searchEl.style.display = isQuiz ? "none" : "";
+    if (isQuiz) startQuiz();
+  }
+
+  btnBrowse.addEventListener("click", () => setMode("browse"));
+  btnQuiz.addEventListener("click", () => setMode("quiz"));
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function startQuiz() {
+    quizState = { score: 0, total: 0, answered: false };
+    document.getElementById("quiz-score").textContent = "Score: 0 / 0";
+    nextQuizQuestion();
+  }
+
+  function nextQuizQuestion() {
+    const all = flatPhrases();
+    const correct = all[Math.floor(Math.random() * all.length)];
+    const distractors = shuffle(all.filter(p => p.es !== correct.es)).slice(0, 3);
+    const options = shuffle([correct, ...distractors]);
+    quizState.answered = false;
+    quizState.current = correct;
+
+    document.getElementById("quiz-q").textContent = correct.en;
+    document.getElementById("quiz-hint").textContent = "Choose the Spanish that matches:";
+    const opts = document.getElementById("quiz-opts");
+    opts.innerHTML = "";
+    options.forEach(opt => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = opt.es;
+      b.addEventListener("click", () => onQuizAnswer(b, opt.es === correct.es, correct.es));
+      opts.appendChild(b);
+    });
+    const nextBtn = document.getElementById("quiz-next");
+    nextBtn.disabled = true;
+  }
+
+  function onQuizAnswer(btn, isCorrect, correctEs) {
+    if (quizState.answered) return;
+    quizState.answered = true;
+    quizState.total++;
+    if (isCorrect) quizState.score++;
+    document.getElementById("quiz-score").textContent =
+      `Score: ${quizState.score} / ${quizState.total}`;
+    const buttons = document.querySelectorAll("#quiz-opts button");
+    buttons.forEach(b => {
+      b.disabled = true;
+      if (b.textContent === correctEs) b.classList.add("correct");
+      if (b === btn && !isCorrect) b.classList.add("wrong");
+    });
+    document.getElementById("quiz-next").disabled = false;
+  }
+
+  document.getElementById("quiz-next").addEventListener("click", nextQuizQuestion);
+
+  renderNav();
+  renderLessons("");
+
+  // Phrase count for console / sanity
+  const total = flatPhrases().length;
+  console.info("PT Spanish phrases:", total);
+})();
+  </script>
+</body>
+</html>

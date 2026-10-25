@@ -193,6 +193,55 @@
       opacity: 0.7;
     }
     .card.revealed .tap-hint { display: none; }
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.55rem;
+    }
+    .card-top .es { flex: 1; }
+    .speak-btn {
+      flex-shrink: 0;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      color: var(--accent);
+      border-radius: 999px;
+      padding: 0.32rem 0.7rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      line-height: 1.25;
+      white-space: nowrap;
+    }
+    .speak-btn:hover { border-color: var(--accent-dim); background: var(--panel-hover); }
+    .speak-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .speak-btn.speaking {
+      border-color: var(--accent);
+      background: rgba(110, 231, 183, 0.14);
+      color: var(--accent);
+    }
+    .speak-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .tts-note {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin: 0 0 1.25rem;
+      padding: 0.6rem 0.85rem;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 0.55rem;
+    }
+    .tts-note.warn {
+      color: var(--warn);
+      border-color: rgba(251, 191, 36, 0.35);
+      background: rgba(251, 191, 36, 0.08);
+    }
+    .quiz-speak-row {
+      margin: 0.75rem 0 0;
+    }
 
     /* Quiz */
     #quiz-panel {
@@ -274,9 +323,11 @@
       <ul class="howto">
         <li><strong>Browse</strong> by section, or search above the list.</li>
         <li><strong>Tap a card</strong> to reveal / hide the English (practice mode).</li>
+        <li><strong>🔊 Speak</strong> plays the Spanish aloud via your device’s built-in voices (offline; no audio files).</li>
         <li><strong>Quiz</strong> shows English; pick the matching Spanish.</li>
         <li>Phonetics are approximate US-English hints—not IPA.</li>
       </ul>
+      <p class="tts-note" id="tts-note" hidden></p>
     </header>
 
     <div class="toolbar" role="toolbar" aria-label="Study modes">
@@ -293,6 +344,9 @@
       <p class="quiz-prompt" id="quiz-q"></p>
       <p class="quiz-sub" id="quiz-hint">Choose the Spanish that matches:</p>
       <div class="quiz-options" id="quiz-opts"></div>
+      <div class="quiz-speak-row" id="quiz-speak-row" hidden>
+        <button type="button" class="speak-btn" id="quiz-speak" aria-label="Speak Spanish">🔊 Speak answer</button>
+      </div>
       <div class="quiz-meta">
         <span class="quiz-score" id="quiz-score">Score: 0 / 0</span>
         <button type="button" class="quiz-next" id="quiz-next" disabled>Next</button>
@@ -302,7 +356,7 @@
     <div id="lessons-panel"></div>
 
     <footer>
-      <p>Vanilla HTML/JS · Matches lab dark theme · Ready for <code>damnyoucode.github.io/lab/pt-spanish/</code> when you approve publish.</p>
+      <p>Vanilla HTML/JS · Web Speech API pronunciations · Matches lab dark theme · <code>damnyoucode.github.io/lab/pt-spanish/</code></p>
       <p><a href="../">← Lab home</a></p>
     </footer>
   </main>
@@ -471,6 +525,9 @@
   let hideEnglish = true;
   let allRevealed = false;
   let quizState = { score: 0, total: 0, answered: false };
+  let preferredVoice = null;
+  let ttsAvailable = false;
+  let speakingBtn = null;
 
   function flatPhrases() {
     return SECTIONS.flatMap(s => s.phrases.map(p => ({ ...p, section: s.title })));
@@ -502,12 +559,15 @@
       list.forEach((p, i) => {
         const hideClass = hideEnglish && !allRevealed ? "hidden-en" : "";
         const revClass = allRevealed ? "revealed" : "";
-        html += `<button type="button" class="card ${hideClass} ${revClass}" data-sec="${sec.id}" data-i="${i}" aria-label="Phrase: ${escapeAttr(p.es)}">
-          <p class="es">${escapeHtml(p.es)}</p>
+        html += `<div class="card ${hideClass} ${revClass}" role="button" tabindex="0" data-sec="${sec.id}" data-i="${i}" data-es="${escapeAttr(p.es)}" aria-label="Phrase: ${escapeAttr(p.es)}">
+          <div class="card-top">
+            <p class="es">${escapeHtml(p.es)}</p>
+            <button type="button" class="speak-btn" data-speak="${escapeAttr(p.es)}" aria-label="Speak: ${escapeAttr(p.es)}" ${ttsAvailable ? "" : "disabled"}>🔊 Speak</button>
+          </div>
           <p class="phon">${escapeHtml(p.phon)}</p>
           <p class="en">${escapeHtml(p.en)}</p>
           ${hideEnglish && !allRevealed ? '<p class="tap-hint">Tap to reveal English</p>' : ""}
-        </button>`;
+        </div>`;
       });
       html += `</div></section>`;
     });
@@ -522,12 +582,118 @@
     return escapeHtml(s).replace(/"/g, "&quot;");
   }
 
-  lessonsEl.addEventListener("click", (e) => {
-    const card = e.target.closest(".card");
+  // --- Web Speech API (offline device voices) ---
+  function pickSpanishVoice() {
+    if (!("speechSynthesis" in window)) return null;
+    const voices = speechSynthesis.getVoices() || [];
+    if (!voices.length) return null;
+    const byLang = (re) => voices.find(v => re.test(v.lang));
+    const byName = (re) => voices.find(v => re.test(v.name));
+    return (
+      byLang(/^es[-_]US$/i) ||
+      byLang(/^es[-_]MX$/i) ||
+      byName(/mexico|mexican|latin\s*american|español\s*\(estados|spanish\s*\(united|spanish\s*\(mexico/i) ||
+      byLang(/^es[-_]ES$/i) ||
+      byLang(/^es\b/i) ||
+      voices.find(v => (v.lang || "").toLowerCase().startsWith("es"))
+    );
+  }
+
+  function refreshTtsStatus() {
+    const note = document.getElementById("tts-note");
+    if (!("speechSynthesis" in window)) {
+      ttsAvailable = false;
+      preferredVoice = null;
+      if (note) {
+        note.hidden = false;
+        note.className = "tts-note warn";
+        note.textContent = "Speech isn’t available in this browser. Phonetic hints still work for practice.";
+      }
+      return;
+    }
+    preferredVoice = pickSpanishVoice();
+    ttsAvailable = true;
+    if (note) {
+      if (preferredVoice) {
+        note.hidden = false;
+        note.className = "tts-note";
+        note.textContent = "Pronunciations use your device’s Spanish voice (" + preferredVoice.name + " · " + preferredVoice.lang + "). Prefer Latin American when available; works offline.";
+      } else {
+        note.hidden = false;
+        note.className = "tts-note warn";
+        note.textContent = "No Spanish system voice found yet. Speak may still work with a default voice, or install a Spanish voice in your OS/browser settings. Phonetics remain available.";
+      }
+    }
+    document.querySelectorAll(".speak-btn").forEach(b => { b.disabled = false; });
+  }
+
+  function speakSpanish(text, btn) {
+    if (!text) return;
+    if (!("speechSynthesis" in window)) {
+      refreshTtsStatus();
+      return;
+    }
+    speechSynthesis.cancel();
+    if (speakingBtn) speakingBtn.classList.remove("speaking");
+    const u = new SpeechSynthesisUtterance(text);
+    const voice = preferredVoice || pickSpanishVoice();
+    preferredVoice = voice;
+    if (voice) {
+      u.voice = voice;
+      u.lang = voice.lang;
+    } else {
+      u.lang = "es-MX";
+    }
+    u.rate = 0.92;
+    u.pitch = 1;
+    if (btn) {
+      speakingBtn = btn;
+      btn.classList.add("speaking");
+    }
+    u.onend = u.onerror = () => {
+      if (btn) btn.classList.remove("speaking");
+      if (speakingBtn === btn) speakingBtn = null;
+    };
+    speechSynthesis.speak(u);
+  }
+
+  if ("speechSynthesis" in window) {
+    refreshTtsStatus();
+    speechSynthesis.addEventListener("voiceschanged", () => {
+      refreshTtsStatus();
+    });
+    // Some browsers populate voices asynchronously without a reliable event race
+    setTimeout(refreshTtsStatus, 250);
+    setTimeout(refreshTtsStatus, 1000);
+  } else {
+    refreshTtsStatus();
+  }
+
+  function toggleCardReveal(card) {
     if (!card || !hideEnglish) return;
     card.classList.toggle("revealed");
     const hint = card.querySelector(".tap-hint");
     if (hint) hint.style.display = card.classList.contains("revealed") ? "none" : "";
+  }
+
+  lessonsEl.addEventListener("click", (e) => {
+    const speak = e.target.closest(".speak-btn");
+    if (speak) {
+      e.preventDefault();
+      e.stopPropagation();
+      speakSpanish(speak.getAttribute("data-speak") || "", speak);
+      return;
+    }
+    const card = e.target.closest(".card");
+    toggleCardReveal(card);
+  });
+
+  lessonsEl.addEventListener("keydown", (e) => {
+    if (e.target.closest(".speak-btn")) return;
+    const card = e.target.closest(".card");
+    if (!card || (e.key !== "Enter" && e.key !== " ")) return;
+    e.preventDefault();
+    toggleCardReveal(card);
   });
 
   searchEl.addEventListener("input", () => {
@@ -580,6 +746,8 @@
     const options = shuffle([correct, ...distractors]);
     quizState.answered = false;
     quizState.current = correct;
+    const speakRow = document.getElementById("quiz-speak-row");
+    if (speakRow) speakRow.hidden = true;
 
     document.getElementById("quiz-q").textContent = correct.en;
     document.getElementById("quiz-hint").textContent = "Choose the Spanish that matches:";
@@ -610,9 +778,21 @@
       if (b === btn && !isCorrect) b.classList.add("wrong");
     });
     document.getElementById("quiz-next").disabled = false;
+    const speakRow = document.getElementById("quiz-speak-row");
+    const speakBtn = document.getElementById("quiz-speak");
+    if (speakRow && speakBtn) {
+      speakRow.hidden = false;
+      speakBtn.disabled = !ttsAvailable && !("speechSynthesis" in window);
+      speakBtn.onclick = () => speakSpanish(correctEs, speakBtn);
+    }
   }
 
-  document.getElementById("quiz-next").addEventListener("click", nextQuizQuestion);
+  document.getElementById("quiz-next").addEventListener("click", () => {
+    const speakRow = document.getElementById("quiz-speak-row");
+    if (speakRow) speakRow.hidden = true;
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    nextQuizQuestion();
+  });
 
   renderNav();
   renderLessons("");

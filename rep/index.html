@@ -60,6 +60,13 @@ h1{font-size:30px;font-weight:900;margin:0;letter-spacing:-.5px;background:linea
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 20px);transform:translate(-50%,-300%);opacity:0;background:linear-gradient(135deg,var(--a),var(--b));color:#fff;font-weight:900;padding:12px 20px;border-radius:999px;transition:.35s;z-index:9;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .toast.show{transform:translate(-50%,0);opacity:1}
 button{font-family:inherit;cursor:pointer}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;z-index:8}
+.sheet.show{display:flex}
+.panel{width:100%;background:var(--card);border-radius:24px 24px 0 0;padding:20px 18px calc(env(safe-area-inset-bottom) + 20px);border-top:1px solid #2a2a3d}
+.panel h2{margin:0 0 4px;font-size:22px;font-weight:900}
+.panel pre{white-space:pre-wrap;background:var(--card2);border-radius:14px;padding:12px;font-size:13px;color:var(--text);max-height:40vh;overflow:auto;font-family:ui-monospace,Menlo,monospace}
+.big{width:100%;padding:16px;border-radius:16px;border:0;font-weight:900;font-size:17px;color:#fff;background:linear-gradient(135deg,var(--a),var(--b));margin-top:8px}
+.ghost{width:100%;padding:13px;border-radius:16px;border:1px solid #2a2a3d;background:transparent;color:var(--dim);font-weight:800;font-size:15px;margin-top:8px}
 </style>
 </head>
 <body>
@@ -71,7 +78,8 @@ button{font-family:inherit;cursor:pointer}
 <div class="where"><button class="pill on" data-w="gym">🏋️ Life Time</button><button class="pill" data-w="home">🏠 Home</button></div>
 <div class="note">Tap a circle when you finish a set and it starts your rest timer. Type the weight and the reps you actually hit. Hit the top of the range on every set and you add weight next time.</div>
 <div id="list"></div>
-<div class="hist"><h3>Recent sessions</h3><div id="hist"></div></div>
+<div class="hist"><h3>Recent sessions</h3><div id="hist"></div><button class="ghost" id="copyall">📋 Copy all sessions for Rep</button></div>
+<div class="sheet" id="sheet"><div class="panel"><h2>Session logged 🏆</h2><div class="sub">Tap below, then paste it in your chat with Rep.</div><pre id="sumtext"></pre><button class="big" id="sendrep">📋 Send to Rep</button><button class="ghost" id="closesheet">Done</button></div></div>
 <div class="bar">
   <div class="timer"><span class="clock" id="clock">0:00</span><button class="tbtn" data-t="90">90s</button><button class="tbtn" data-t="150">2:30</button></div>
   <button class="finish" id="finish">Finish 💪</button>
@@ -136,17 +144,26 @@ function tick(){const left=Math.max(0,Math.round((tEnd-Date.now())/1000));clock.
 document.querySelectorAll(".tbtn").forEach(b=>b.onclick=()=>startTimer(+b.dataset.t));
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2200)}
 document.getElementById("finish").onclick=()=>{
- const ex=PLAN[st.where][st.day];let sets=0;const items=[];
+ const ex=PLAN[st.where][st.day];let sets=0;const items=[],lines=[];
  ex.forEach(([n],i)=>{const id=key()+i,c=(st.sets[id]||[]).filter(Boolean).length;sets+=c;
   const reps=(st.r[id]||[]).filter(Boolean).join("/");
-  if(c){items.push(`${n} ${st.w[id]?st.w[id]+"lb ":""}${reps||c+" sets"}`);last[n]={w:st.w[id]||(last[n]&&last[n].w)||"",r:reps}}});
+  if(c){items.push(`${n} ${st.w[id]?st.w[id]+"lb ":""}${reps||c+" sets"}`);last[n]={w:st.w[id]||(last[n]&&last[n].w)||"",r:reps};
+   lines.push(`${n}: ${st.w[id]?st.w[id]+" lb":"bodyweight/no wt"} × ${reps||"?"} (${c}/${ex[i][1]} sets)`)}
+  else lines.push(`${n}: skipped`)});
  if(!sets){toast("Check off a set first 😤");return}
- hist.unshift({date:new Date().toLocaleDateString(undefined,{month:"short",day:"numeric"}),day:st.day,where:st.where,sets,items});
+ const dt=new Date();const entry={date:dt.toLocaleDateString(undefined,{month:"short",day:"numeric"}),iso:dt.toISOString().slice(0,10),day:st.day,where:st.where,sets,items,lines};
+ hist.unshift(entry);
  SS("rep_hist",hist.slice(0,50));SS("rep_last",last);
  ex.forEach((_,i)=>{const id=key()+i;delete st.sets[id];delete st.w[id];delete st.r[id]});
  st.day={A:"B",B:"C",C:"A"}[st.day];save();render();window.scrollTo({top:0,behavior:"smooth"});
- toast("Session logged. Beast mode 🏆");
+ openSheet(fmt(entry));
 };
+function fmt(e){return `REP LOG ${e.iso||e.date} · Day ${e.day} (${e.where==="gym"?"Life Time":"Home"})\n`+(e.lines||e.items).join("\n")}
+function openSheet(t){document.getElementById("sumtext").textContent=t;document.getElementById("sheet").classList.add("show")}
+async function copy(t){try{await navigator.clipboard.writeText(t);toast("Copied. Paste it to Rep 📲")}catch(e){const ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();toast("Copied. Paste it to Rep 📲")}}
+document.getElementById("sendrep").onclick=()=>copy(document.getElementById("sumtext").textContent);
+document.getElementById("closesheet").onclick=()=>document.getElementById("sheet").classList.remove("show");
+document.getElementById("copyall").onclick=()=>{if(!hist.length){toast("No sessions yet");return}openSheet(hist.map(fmt).join("\n\n"))};
 render();
 </script>
 </body>

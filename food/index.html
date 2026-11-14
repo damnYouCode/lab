@@ -58,6 +58,14 @@ h1{font-size:30px;font-weight:900;margin:0;letter-spacing:-.5px;background:linea
 .item .kc small{display:block;color:var(--dim);font-weight:700;font-size:11px}
 .badge{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;font-size:10.5px;font-weight:800;vertical-align:middle;background:#2a2a3d;color:var(--dim)}
 .badge.est{background:rgba(255,204,102,.14);color:var(--warn)}
+.item .am .badge{margin:0 6px 0 0;padding:1px 6px}
+.badge.rep{background:rgba(46,229,157,.14);color:#8ff0c6}
+.sugg{background:linear-gradient(135deg,rgba(255,61,110,.12),rgba(255,176,32,.10));border:1px solid rgba(255,176,32,.45);border-radius:18px;padding:12px 14px;margin-bottom:12px}
+.sugg .st{font-size:14.5px;font-weight:800;line-height:1.35}
+.sugg .sn{font-size:12px;color:var(--dim);margin-top:3px}
+.sugg .sb{display:flex;gap:8px;margin-top:10px}
+.sugg .sb .mini{flex:1;padding:10px;font-size:14px}
+.mini.dim{color:var(--dim)}
 .badge.uns{background:rgba(255,61,110,.16);color:#ff7a98}
 .empty{color:var(--dim);font-size:14px;text-align:center;padding:26px 10px;border:1.5px dashed #2f2f47;border-radius:20px}
 .bar{position:fixed;left:0;right:0;bottom:0;padding:10px 12px calc(env(safe-area-inset-bottom) + 10px);background:rgba(11,11,18,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid #222235;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;z-index:5}
@@ -166,6 +174,7 @@ summary{color:var(--dim);font-size:13px;font-weight:800}
 <section id="vtoday">
   <div class="meals" id="meals"></div>
   <div class="note" id="mealnote"></div>
+  <div id="suggest"></div>
   <div id="daylist"></div>
 </section>
 <section id="vweek" class="hidden"></section>
@@ -462,11 +471,51 @@ function itemOut(it){
  for(const k of["sodium_mg","sugars_g","fiber_g"])if(num(it[k])!=null)o[k]=num(it[k]);
  return o;
 }
-function buildPayload(action,meal,items,date,time,dayT,targets){
+const DEVICE_RE=/^[a-f0-9]{32}$/;
+function buildPayload(action,meal,items,date,time,dayT,targets,device){
  const its=items.slice(0,30).map(itemOut);
- return{type:"food",action,date,time,meal,items:its,summary:summaryText(action,meal,its,date,time,dayT,targets),day_totals:dayT||undefined};
+ const p={type:"food",action,date,time,meal,items:its,summary:summaryText(action,meal,its,date,time,dayT,targets),day_totals:dayT||undefined};
+ if(device&&DEVICE_RE.test(device))p.device=device;
+ return p;
 }
-return{MEALS,MEAL_LABEL,MEAL_ICON,OFF_URL,OFF_FIELDS,localIso,hhmm,num,r0,r1,defaultMeal,upcEtoA,gtinOk,codeVariants,lookupOFF,offToBasis,canMode,computeMacros,firstNumber,parseLabel,labelToBasis,totals,summaryText,itemLine,itemOut,buildPayload,MACROS};
+// ---------- Rep estimates coming back from the relay ----------
+// est: {id:{calories,protein_g,carbs_g,fat_g,note,updated_at}}. Mutates items. Never triggers a POST.
+// - pending item (estimate_needed + blank numbers): fill blanks, rep_est=true
+// - item that is still Rep's own estimate (not edited by him): take Rep's revision silently
+// - item with his/label numbers: if Rep differs, attach a suggestion (Apply / Dismiss), never overwrite
+// - est_seen = newest estimate timestamp already handled (applied, dismissed, or older than his own edit)
+function estVals(e){const o={};for(const k of MACROS){const v=num(e[k]);o[k]=v==null?null:(k==="calories"?r0(v):r1(v))}return o}
+function applyEstimates(items,est,skipId){
+ const res={filled:[],updated:[],suggested:[],changed:false};
+ if(!est||typeof est!=="object")return res;
+ for(const it of items){
+  const e=est[it.id];if(!e||it.id===skipId)continue;
+  const ts=String(e.updated_at||"");
+  if(ts&&ts>(it.est_last||"")){it.est_last=ts;res.changed=true} // newest server version seen (server clock, so no phone-clock skew)
+  if(it.est_seen&&ts&&ts<=it.est_seen)continue;
+  const v=estVals(e);if(MACROS.some(k=>v[k]==null))continue;
+  const note=typeof e.note==="string"?e.note.slice(0,200):"";
+  const pending=it.estimate_needed&&MACROS.some(k=>it[k]==null);
+  if(pending){
+   for(const k of MACROS)if(it[k]==null)it[k]=v[k];
+   it.estimate_needed=MACROS.some(k=>it[k]==null);it.rep_est=true;it.rep_note=note;it.est_seen=ts;delete it.suggestion;
+   res.filled.push(it.id);res.changed=true;
+  }else if(it.rep_est&&!it.user_edit_at){
+   const same=MACROS.every(k=>r1(num(it[k]))===v[k]);
+   Object.assign(it,v);it.rep_note=note;it.est_seen=ts;delete it.suggestion;
+   if(!same)res.updated.push(it.id);res.changed=true;
+  }else{
+   const same=MACROS.every(k=>r1(num(it[k]))===v[k]);
+   if(same){it.est_seen=ts;delete it.suggestion;res.changed=true;continue}
+   if(!it.suggestion||it.suggestion.updated_at!==ts){it.suggestion=Object.assign({},v,{note,updated_at:ts});res.suggested.push(it.id);res.changed=true}
+  }
+ }
+ return res;
+}
+function applySuggestion(it){const s=it.suggestion;if(!s)return false;for(const k of MACROS)it[k]=s[k];it.rep_est=true;it.rep_note=s.note||"";it.user_edit_at=null;it.estimate_needed=false;it.est_seen=s.updated_at;delete it.suggestion;return true}
+function dismissSuggestion(it){const s=it.suggestion;if(!s)return false;it.est_seen=s.updated_at;delete it.suggestion;return true}
+const isPending=it=>!!it.estimate_needed&&MACROS.some(k=>it[k]==null);
+return{DEVICE_RE,applyEstimates,applySuggestion,dismissSuggestion,isPending,MEALS,MEAL_LABEL,MEAL_ICON,OFF_URL,OFF_FIELDS,localIso,hhmm,num,r0,r1,defaultMeal,upcEtoA,gtinOk,codeVariants,lookupOFF,offToBasis,canMode,computeMacros,firstNumber,parseLabel,labelToBasis,totals,summaryText,itemLine,itemOut,buildPayload,MACROS};
 })();
 if(typeof module!=="undefined")module.exports=FeedCore;
 if(typeof window!=="undefined")window.FeedCore=FeedCore;
@@ -486,6 +535,10 @@ const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}c
 const store=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){toast("Phone storage is full")}};
 let days=load(LS.days,{}),targets=load(LS.tgt,{}),recent=load(LS.recent,[]);
 let curMeal=C.defaultMeal(new Date()),view="today",openDay=null;
+// random 128-bit device token so Rep's estimates can find their way back to this phone
+const DEVICE=(()=>{let d=null;try{d=localStorage.getItem("feed_device")}catch(e){}
+ if(!C.DEVICE_RE.test(d||"")){const b=new Uint8Array(16);crypto.getRandomValues(b);d=Array.from(b,x=>x.toString(16).padStart(2,"0")).join("");try{localStorage.setItem("feed_device",d)}catch(e){}}
+ return d})();
 const SRC_ICON={barcode:"▥",label:"📷",describe:"💬",manual:"✍️"};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const today=()=>C.localIso(new Date());
@@ -511,7 +564,7 @@ function sendToRep(payload){
 async function sendItems(action,meal,items,date){
  const its=items.slice(0,30);
  const t=its[0]?its[0].time:C.hhmm(new Date());
- const payload=C.buildPayload(action,meal,its,date,t,C.totals(dayItems(date)),targets);
+ const payload=C.buildPayload(action,meal,its,date,t,C.totals(dayItems(date)),targets,DEVICE);
  const ok=await sendToRep(payload);
  if(action!=="delete"){for(const it of its){const live=dayItems(date).find(x=>x.id===it.id);if(live)live.sent=ok}saveDays();render()}
  if(ok)toast("Sent to Rep ✅");
@@ -532,6 +585,12 @@ function render(){
  $("meals").innerHTML=C.MEALS.map(m=>`<button class="pill${m===curMeal?" on":""}" data-meal="${m}">${C.MEAL_ICON[m]} ${C.MEAL_LABEL[m]}</button>`).join("");
  $("mealnote").textContent=`New items go to ${C.MEAL_LABEL[curMeal]}. Each one is sent to Rep when you save it.`;
  const groups=C.MEALS.map(m=>[m,items.filter(i=>i.meal===m)]).filter(g=>g[1].length);
+ const sugg=items.filter(i=>i.suggestion);
+ $("suggest").innerHTML=sugg.map(i=>{const g=i.suggestion;const diff=C.MACROS.filter(k=>C.r1(C.num(i[k]))!==g[k]);
+  const lab={calories:"kcal",protein_g:"protein",carbs_g:"carbs",fat_g:"fat"};
+  const what=diff.map(k=>k==="calories"?`${fmtK(g[k])} kcal`:`${fmtG(g[k])} g ${lab[k]}`).join(", ");
+  const had=diff.map(k=>k==="calories"?`${fmtK(i[k])} kcal`:`${fmtG(i[k])} g`).join(", ");
+  return`<div class="sugg"><div class="st">🤖 Rep suggests <b>${esc(what)}</b> for ${esc(i.name)}</div><div class="sn">You have ${esc(had)}${g.note?" · "+esc(g.note):""}</div><div class="sb"><button class="mini" data-apply="${i.id}">Apply</button><button class="mini dim" data-dismiss="${i.id}">Dismiss</button></div></div>`}).join("");
  $("daylist").innerHTML=groups.length?groups.map(([m,its])=>{const t=C.totals(its);const uns=its.some(i=>i.sent===false);
   return`<div class="meal"><div class="mh"><span class="mn">${C.MEAL_ICON[m]} ${C.MEAL_LABEL[m]}</span>${uns?`<button class="mini" data-resend="${m}">↻ Send</button>`:""}<button class="mini" data-copy="${m}">📋</button><span class="ms">${t.estimates_pending===its.length?"Rep<br>estimating":`${fmtK(t.calories)} kcal${t.estimates_pending?"+":""}<br>P ${fmtG(t.protein_g)}g`}</span></div>${its.map(itemRow).join("")}</div>`}).join("")
   :`<div class="empty">Nothing logged yet today.<br>Tap <b>Scan</b>, <b>Label</b>, <b>Describe</b> or <b>Recent</b> below.</div>`;
@@ -539,7 +598,7 @@ function render(){
 }
 function itemRow(it){
  const none=C.MACROS.every(k=>it[k]==null);
- return`<button class="item" data-id="${it.id}"><span class="ic">${SRC_ICON[it.source]||"•"}</span><span class="in"><div class="nm">${esc(it.name)}${it.estimate_needed?'<span class="badge est">Rep estimates</span>':""}${it.sent===false?'<span class="badge uns">not sent</span>':""}</div><div class="am">${esc([it.amount,it.brand,it.time].filter(Boolean).join(" · "))}</div></span><span class="kc">${none?"—":fmtK(it.calories)}<small>${none?"pending":"P "+fmtG(it.protein_g)+" · C "+fmtG(it.carbs_g)+" · F "+fmtG(it.fat_g)}</small></span></button>`;
+ return`<button class="item" data-id="${it.id}"><span class="ic">${SRC_ICON[it.source]||"•"}</span><span class="in"><div class="nm">${esc(it.name)}</div><div class="am">${it.estimate_needed?'<span class="badge est">Rep estimates</span>':""}${it.rep_est?'<span class="badge rep">Rep est.</span>':""}${it.suggestion?'<span class="badge est">Rep suggests</span>':""}${it.sent===false?'<span class="badge uns">not sent</span>':""}${esc([it.amount,it.brand,it.time].filter(Boolean).join(" · "))}</div></span><span class="kc">${none?"—":fmtK(it.calories)}<small>${none?"pending":"P "+fmtG(it.protein_g)+" · C "+fmtG(it.carbs_g)+" · F "+fmtG(it.fat_g)}</small></span></button>`;
 }
 function renderWeek(){
  const now=new Date(),ds=[];
@@ -571,13 +630,14 @@ function mealChips(boxId,sel,onPick){$(boxId).innerHTML=C.MEALS.map(m=>`<button 
 // opts: {mode:"add"|"edit", item?, source, basis?, thumb?, msg?, notFound?, label?(parsed)}
 function openEditor(o){
  const it=o.item||{};
- ed={mode:o.mode||"add",id:it.id||uid(),date:it.date||today(),time:it.time||null,source:o.source||it.source||"manual",basis:o.basis||it.basis||null,amode:it.amode||"serv",qty:it.qty??1,meal:it.meal||curMeal,sent:it.sent,description:it.description||""};
+ ed={mode:o.mode||"add",orig:it,id:it.id||uid(),date:it.date||today(),time:it.time||null,source:o.source||it.source||"manual",basis:o.basis||it.basis||null,amode:it.amode||"serv",qty:it.qty??1,meal:it.meal||curMeal,sent:it.sent,description:it.description||""};
  const b=ed.basis;
  if(b&&!C.canMode(b,ed.amode))ed.amode=C.canMode(b,"serv")?"serv":"g";
  if(b&&ed.mode==="add"&&!it.qty&&ed.amode==="g")ed.qty=100;
  $("edtitle").textContent=ed.mode==="edit"?"Edit item":({barcode:"Scanned item",label:"Check the label",describe:"Described meal",manual:"Add food"})[ed.source];
  $("edsub").textContent=ed.mode==="edit"?`Logged ${ed.time||""}. Saving sends Rep the update.`:({barcode:"From Open Food Facts. Fix anything that looks off.",label:"Read from your photo. Fix anything that looks off before saving.",describe:"",manual:"Type what you know. Blank numbers go to Rep to estimate."})[ed.source];
  $("edthumb").classList.toggle("hidden",!o.thumb);if(o.thumb)$("edthumb").src=o.thumb;
+ if(!o.msg&&it.rep_est){o.msg="🤖 These numbers are Rep's estimate"+(it.rep_note?" ("+it.rep_note+")":"")+". Change them and your numbers win.";o.msgOk=true}
  $("edmsg").innerHTML=(o.msg?`<div class="${o.msgOk?"okbox":"warnbox"}">${esc(o.msg)}</div>`:"")+((o.label&&o.label.warnings||[]).length?`<div class="warnbox">⚠︎ Double-check ${o.label.warnings.map(esc).join("; ")}</div>`:"");
  setv("edname",it.name||"");$("edname").placeholder=ed.source==="label"?"What is it? e.g. Honey oat cereal":"e.g. Greek yogurt";setv("edbrand",it.brand||"");setv("edcode",it.barcode||o.barcode||"");
  $("edlabel").classList.toggle("hidden",!o.notFound);
@@ -645,6 +705,10 @@ $("edsave").onclick=()=>{
   ingredients:$("eingr").value.trim().slice(0,1500),serving_size:ed.basis?ed.basis.servingText:"",description:ed.description,
   basis:ed.basis,amode:ed.amode,qty:C.num($("qty").value)};
  it.estimate_needed=TK.some(k=>it[k]==null);
+ if(ed.mode==="edit"){const o=ed.orig||{};const changed=TK.some(k=>C.r1(C.num(o[k]))!==C.r1(it[k]));
+  // his numbers win: if he touched the numbers, drop the Rep flag/suggestion and ignore estimates older than now
+  if(changed||!o.rep_est){it.rep_est=false;it.rep_note="";if(!it.estimate_needed){it.user_edit_at=new Date().toISOString();const a=o.est_last||"",b=o.est_seen||"";it.est_seen=a>b?a:b}it.suggestion=undefined}
+  else{it.rep_est=true;it.rep_note=o.rep_note||""}}
  commitItem(it,ed.mode==="edit",$("edfav").checked);
  hide("edsheet");ed=null;
 };
@@ -820,6 +884,10 @@ $("labelfile").onchange=e=>{const f=e.target.files&&e.target.files[0];e.target.v
 $("busycancel").onclick=async()=>{ocrCancelled=true;hide("busysheet");if(ocrWorker){try{await ocrWorker.terminate()}catch(e){}ocrWorker=null}};
 
 // ---------- wiring ----------
+$("suggest").onclick=e=>{const a=e.target.closest("[data-apply]"),d=e.target.closest("[data-dismiss]");const id=(a||d)&&(a||d).dataset[a?"apply":"dismiss"];if(!id)return;
+ const it=dayItems(today()).find(x=>x.id===id);if(!it)return;
+ if(a){C.applySuggestion(it);toast("Applied Rep's numbers")}else{C.dismissSuggestion(it);toast("Kept your numbers")}
+ saveDays();render()}; // local only: no POST, Rep already has these numbers
 $("meals").onclick=e=>{const b=e.target.closest("[data-meal]");if(!b)return;curMeal=b.dataset.meal;render()};
 $("daylist").onclick=e=>{
  const cp=e.target.closest("[data-copy]");if(cp){const m=cp.dataset.copy,its=dayItems(today()).filter(i=>i.meal===m);openCopy(C.MEAL_LABEL[m]+" for Rep",C.summaryText("add",m,its.map(C.itemOut),today(),its[0]?its[0].time:"",C.totals(dayItems(today())),targets),()=>sendItems("add",m,its,today()));return}
@@ -830,8 +898,32 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{view=t.dataset.v;doc
 $("vweek").onclick=e=>{if(e.target.id==="copyweek"){openCopy("This week for Rep",weekText());return}const r=e.target.closest("[data-day]");if(r){openDay=openDay===r.dataset.day?null:r.dataset.day;renderWeek()}};
 document.querySelectorAll(".sheet").forEach(s=>s.addEventListener("click",e=>{if(e.target===s&&s.id!=="busysheet"){s.classList.remove("show");if(s.id==="edsheet")ed=null}}));
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")render();else if(scanStream){stopScan();hide("scan")}});
+// ---------- pull Rep's estimates (GET only; failures are silent) ----------
+let pulling=false;
+function last7(){const n=new Date(),out=[];for(let i=0;i<7;i++)out.push(C.localIso(new Date(n.getFullYear(),n.getMonth(),n.getDate()-i)));return out}
+const hasPending=()=>last7().some(d=>(days[d]||[]).some(C.isPending));
+async function pullEstimates(onlyPending){
+ if(pulling)return null;pulling=true;let filled=0,changed=false;
+ try{
+  const dates=last7().filter(d=>(days[d]||[]).length&&(!onlyPending||(days[d]||[]).some(C.isPending)));
+  for(const d of dates){
+   try{
+    const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),8000);
+    const res=await fetch(RELAY_URL+"estimates?device="+DEVICE+"&date="+d,{cache:"no-store",signal:ctrl.signal}).finally(()=>clearTimeout(t));
+    if(!res.ok)continue;const j=await res.json();if(!j||j.date!==d||!j.items)continue;
+    const r=C.applyEstimates(days[d]||[],j.items,ed&&ed.id);
+    if(r.changed){changed=true;if(d===today())filled+=r.filled.length}
+   }catch(e){/* offline or relay down: stay pending */}
+  }
+  if(changed){saveDays();render();if(filled&&!anySheetOpen())toast(`🤖 Rep estimated ${filled} item${filled>1?"s":""}`)}
+ }finally{pulling=false}
+ return changed;
+}
+setInterval(()=>{if(document.visibilityState==="visible"&&hasPending())pullEstimates(true)},60000);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")pullEstimates(false)});
 render();
-window.Feed={get days(){return days},get recent(){return recent},openEditor,sendItems,parseLabel:C.parseLabel,preprocess,ocrLabel,threshold,onCode,render};
+pullEstimates(false);
+window.Feed={DEVICE,pullEstimates,get days(){return days},get recent(){return recent},openEditor,sendItems,parseLabel:C.parseLabel,preprocess,ocrLabel,threshold,onCode,render};
 
 </script>
 </body>

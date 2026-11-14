@@ -67,6 +67,27 @@ button{font-family:inherit;cursor:pointer}
 .panel pre{white-space:pre-wrap;background:var(--card2);border-radius:14px;padding:12px;font-size:13px;color:var(--text);max-height:40vh;overflow:auto;font-family:ui-monospace,Menlo,monospace}
 .big{width:100%;padding:16px;border-radius:16px;border:0;font-weight:900;font-size:17px;color:#fff;background:linear-gradient(135deg,var(--a),var(--b));margin-top:8px}
 .ghost{width:100%;padding:13px;border-radius:16px;border:1px solid #2a2a3d;background:transparent;color:var(--dim);font-weight:800;font-size:15px;margin-top:8px}
+
+.who{display:flex;align-items:flex-start;gap:8px;min-width:0;flex:1}
+.demo{flex:none;width:102px;height:112px;padding:0;margin:-2px 0 0 -6px;border:1px solid #24243a;background:#0c0c16;border-radius:14px;overflow:hidden}
+.demo .fig{width:102px;height:112px;display:block}
+.zoom{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:12;align-items:center;justify-content:center;padding:24px}
+.zoom.show{display:flex}
+.zoombox{background:var(--card);border:1px solid #2a2a3d;border-radius:24px;padding:16px 16px 12px;width:min(340px,100%);text-align:center}
+.zoombox h3{margin:0 0 8px;font-size:18px;font-weight:900}
+.zoombox .fig{width:280px;height:308px;margin:0 auto;background:#0c0c16;border-radius:16px;display:block}
+/*ANIMCSS*/
+.fig .gnd{stroke:#3a3a52;stroke-width:2;fill:none;stroke-linecap:round}
+.fig .b{stroke:#eee;stroke-width:3.5;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.fig .b.f{stroke:#8d8da3;stroke-width:3}
+.fig .hd{stroke:#eee;stroke-width:3.2;fill:#0c0c16}
+.fig .eq{stroke:#6c6c84;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.fig .eqf{stroke:#6c6c84;stroke-width:1.6;fill:#262636;stroke-linejoin:round}
+.fig .pl{stroke:#9a9ab2;stroke-width:2;fill:#3a3a50}
+.fig .dbf{stroke:#c9c9d8;stroke-width:1;fill:#8e8ea6}
+.fig .dbf.f{opacity:.55}
+/*END ANIMCSS*/
+
 </style>
 </head>
 <body>
@@ -84,6 +105,7 @@ button{font-family:inherit;cursor:pointer}
   <div class="timer"><span class="clock" id="clock">0:00</span><button class="tbtn" data-t="90">90s</button><button class="tbtn" data-t="150">2:30</button></div>
   <button class="finish" id="finish">Finish 💪</button>
 </div>
+<div class="zoom" id="zoom"><div class="zoombox"><h3 id="zoomname"></h3><div id="zoomsvg"></div><button class="ghost" id="zoomclose">Close</button></div></div>
 <div class="toast" id="toast"></div>
 <script>
 const PLAN={
@@ -96,6 +118,196 @@ const PLAN={
   B:[["DB Split Squat",3,"8/leg"],["DB Overhead Press",3,"8–10"],["Pull-ups",3,"max"],["BOSU Reverse Lunge",2,"10/leg"],["Push-ups",2,"max"]],
   C:[["DB Bulgarian Split Squat",3,"10/leg"],["DB Floor Press",3,"10–12"],["Chin-ups",3,"max"],["DB Lateral Raise",3,"12–15"],["BOSU Plank",3,"45s"]]}
 };
+
+//ANIMJS
+// ---- exercise demos: pose table -> SVG (side view, figure faces right) ----
+const LEN={t:28,n:4,h:7.5,r:6,ua:16,fa:15,th:22,sh:21,ft:8};
+const R2=v=>Math.round(v*10)/10, D2R=Math.PI/180;
+const add=(a,b,k=1)=>[a[0]+b[0]*k,a[1]+b[1]*k];
+function ik(R,T,l1,l2,s){
+  let dx=T[0]-R[0],dy=T[1]-R[1],d=Math.hypot(dx,dy)||.01;const ux=dx/d,uy=dy/d;
+  d=Math.min(Math.max(d,Math.abs(l1-l2)+.05),l1+l2-.02);
+  const a=(l1*l1-l2*l2+d*d)/(2*d),h=Math.sqrt(Math.max(0,l1*l1-a*a));
+  return [[R[0]+a*ux+s*h*uy,R[1]+a*uy-s*h*ux],[R[0]+d*ux,R[1]+d*uy]];
+}
+// pose: {P|S:[x,y], tor:deg from vertical (+ = lean toward +x), hd, legs:[{a|t, fa, k, f}], arms:[{w, e, f}]}
+function side(p,s){
+  const L={};for(const k in LEN)L[k]=LEN[k]*s;
+  const th=p.tor*D2R,up=[Math.sin(th),-Math.cos(th)],fw=[Math.cos(th),Math.sin(th)];
+  const P=p.S?add(p.S,up,-L.t):p.P,S=add(P,up,L.t),N=add(S,up,L.n);
+  const hh=(p.tor+(p.hd||0))*D2R,H=add(N,[Math.sin(hh),-Math.cos(hh)],L.h);
+  const j={P,S,N,H,up,fw,L},segs={},want=[];
+  const T=v=>typeof v==="function"?v(j):v;
+  (p.legs||[]).forEach((g,i)=>{
+    const fa=(g.fa==null?4:g.fa)*D2R,fv=[Math.cos(fa),Math.sin(fa)];
+    const A0=g.t?add(T(g.t),fv,-L.ft):T(g.a);
+    const [K,A]=ik(P,A0,L.th,L.sh,g.k==null?1:g.k),Tt=add(A,fv,L.ft);
+    j["k"+i]=K;j["a"+i]=A;j["t"+i]=Tt;want.push([A0,A,"leg"+i]);
+    segs["leg"+i]={pts:[P,K,A,Tt],f:g.f,len:[L.th,L.sh,L.ft]};
+  });
+  (p.arms||[]).forEach((m,i)=>{
+    const W0=T(m.w),[E,W]=ik(S,W0,L.ua,L.fa,m.e==null?-1:m.e);
+    j["e"+i]=E;j["w"+i]=W;want.push([W0,W,"arm"+i]);
+    segs["arm"+i]={pts:[S,E,W],f:m.f,len:[L.ua,L.fa]};
+  });
+  segs.trunk={pts:[P,S,N],len:[L.t,L.n]};
+  return {j,segs,head:H,r:L.r,want};
+}
+// front view (lateral raise): a = upper-arm angle from vertical, b = forearm angle
+function front(p,s){
+  const L={};for(const k in LEN)L[k]=LEN[k]*s;
+  const segs={},j={},cx=50,Sy=29,Py=Sy+L.t,Nb=[cx,Sy-2];
+  const H=[cx,Nb[1]-L.n-L.h+2.5];
+  segs.sh={pts:[[cx-9,Sy],Nb,[cx+9,Sy]],len:[9.2,9.2]};
+  segs.sp={pts:[Nb,[cx,Py]],len:[Py-Nb[1]]};
+  segs.pel={pts:[[cx-5,Py],[cx+5,Py]],len:[10]};
+  [-1,1].forEach((sg,i)=>{
+    const S=[cx+9*sg,Sy],a=p.a*D2R,b=p.b*D2R;
+    const E=add(S,[sg*Math.sin(a),Math.cos(a)],L.ua),W=add(E,[sg*Math.sin(b),Math.cos(b)],L.fa);
+    j["w"+i]=W;segs["arm"+i]={pts:[S,E,W],len:[L.ua,L.fa]};
+    const Hp=[cx+5*sg,Py],A=[cx+7*sg,100],K=[(Hp[0]+A[0])/2,(Hp[1]+A[1])/2];
+    segs["leg"+i]={pts:[Hp,K,A,[A[0]+6*sg,100.5]],len:[L.th,L.sh,6]};
+  });
+  return {j,segs,head:H,r:L.r,want:[]};
+}
+const FLOOR='<line class="gnd" x1="4" y1="102" x2="96" y2="102"/>';
+const hang=j=>add(j.S,j.up,-30),hangF=j=>add(add(j.S,j.up,-29.5),j.fw,1.5);
+const PLATE={type:"plate",at:"w0",r:15},DB={type:"db",at:"w0"},DBF={type:"db",at:"w1",f:1};
+function bodyLine(toe,fa,ang,s){ // straight plank/push-up body from toes
+  const ft=LEN.ft*s,A=add(toe,[Math.cos(fa*D2R),Math.sin(fa*D2R)],-ft),a=ang*D2R;
+  return {S:add(A,[Math.cos(a),-Math.sin(a)],(LEN.th+LEN.sh+LEN.t)*s-.05),tor:90-ang};
+}
+const SPLIT=(dbs)=>({env:FLOOR,items:dbs?[DB]:[],poses:[
+  {P:[43,61],tor:3,legs:[{t:[30,101],fa:52,f:1,k:1},{a:[61,100]}],arms:[{w:dbs?hangF:j=>add(add(j.S,j.up,-29.5),j.fw,3)}]},
+  {P:[41,78],tor:5,legs:[{t:[30,101],fa:52,f:1,k:1},{a:[61,100]}],arms:[{w:dbs?hangF:j=>add(add(j.S,j.up,-29.5),j.fw,3)}]}]});
+const PULL=(lean,el)=>({s:.85,env:'<line class="eq" x1="18" y1="10" x2="86" y2="10"/><line class="eq" x1="22" y1="10" x2="22" y2="4"/><line class="eq" x1="82" y1="10" x2="82" y2="4"/>',
+  poses:[{S:[49,35.85],tor:3,legs:[{a:j=>add(j.P,[-5,33.5]),k:1}],arms:[{w:[56,10.5]}]},
+         {S:[46,21],tor:lean,legs:[{a:j=>add(j.P,[-7,32]),k:1}],arms:[{w:[56,10.5],e:el}]}]});
+const PRESS=(item)=>({s:.78,env:FLOOR,items:[item],poses:[
+  {P:[49,66],tor:0,legs:[{a:[50,100]}],arms:[{w:j=>add(add(j.S,j.fw,item.type==="plate"?6:4),j.up,item.type==="plate"?1:2.5),e:1}]},
+  {P:[49,66],tor:-2,legs:[{a:[50,100]}],arms:[{w:j=>add(add(j.S,j.up,23.5),j.fw,3)}]}]});
+const RDL=(item)=>({env:FLOOR,items:[item],poses:[
+  {P:[48,58],tor:3,legs:[{a:[51,100]}],arms:[{w:j=>add(add(j.S,j.up,-30.3),j.fw,2.5)}]},
+  {P:[31,64],tor:68,hd:-12,legs:[{a:[50,100]}],arms:[{w:[57,85]}]}]});
+const DEMO={
+ "Back Squat":{env:FLOOR,items:[{type:"plate",at:"w0",r:15}],poses:[
+   {P:[48,58],tor:5,legs:[{a:[50,100]}],arms:[{w:j=>add(add(j.S,j.fw,-4),j.up,1.5),e:1}]},
+   {P:[33,82],tor:42,hd:-25,legs:[{a:[50,100]}],arms:[{w:j=>add(add(j.S,j.fw,-4),j.up,1.5),e:1}]}]},
+ "DB Goblet Squat":{env:FLOOR,items:[{type:"db",at:"w0",v:1}],poses:[
+   {P:[48,58],tor:3,legs:[{a:[50,100]}],arms:[{w:j=>add(add(j.S,j.fw,8),j.up,-9),e:-1}]},
+   {P:[36,82],tor:24,hd:-14,legs:[{a:[50,100]}],arms:[{w:j=>add(add(j.S,j.fw,8),j.up,-9),e:-1}]}]},
+ "Bench Press":{env:FLOOR+'<rect class="eqf" x="14" y="74" width="62" height="5" rx="2"/><line class="eq" x1="24" y1="79" x2="24" y2="102"/><line class="eq" x1="66" y1="79" x2="66" y2="102"/>',
+   items:[{type:"plate",at:"w0",r:14}],poses:[
+   {P:[58,70.5],tor:-90,legs:[{a:[77,100],k:1}],arms:[{w:[34,41.5]}]},
+   {P:[58,70.5],tor:-90,legs:[{a:[77,100],k:1}],arms:[{w:[38,58],e:-1}]}]},
+ "Barbell Row":{env:FLOOR,items:[{type:"plate",at:"w0",r:14}],poses:[
+   {P:[38,62],tor:72,hd:-15,legs:[{a:[55,100]}],arms:[{w:j=>add(j.S,[-3,29.5])}]},
+   {P:[38,62],tor:72,hd:-15,legs:[{a:[55,100]}],arms:[{w:j=>add(add(j.P,j.up,17),j.fw,5),e:1}]}]},
+ "Romanian Deadlift":RDL({type:"plate",at:"w0",r:14}),
+ "DB Romanian Deadlift":RDL(DB),
+ "Hanging Leg Raise":{s:.85,env:'<line class="eq" x1="18" y1="10" x2="86" y2="10"/><line class="eq" x1="22" y1="10" x2="22" y2="4"/><line class="eq" x1="82" y1="10" x2="82" y2="4"/>',poses:[
+   {S:[40,36.1],tor:2,legs:[{a:j=>add(j.P,[1.5,36.4]),k:1}],arms:[{w:[46,10.5]}]},
+   {S:[39,36.4],tor:-8,legs:[{a:j=>add(j.P,[36.2,-3]),k:1}],arms:[{w:[46,10.5]}]}]},
+ "Deadlift":{env:FLOOR,items:[{type:"plate",at:"w0",r:14}],poses:[
+   {S:[58,57],tor:60,hd:-20,legs:[{a:[47,100]}],arms:[{w:[55,87.6]}]},
+   {P:[48,57],tor:-3,legs:[{a:[49,100]}],arms:[{w:j=>add(add(j.S,j.up,-30.4),j.fw,3)}]}]},
+ "Overhead Press":PRESS({type:"plate",at:"w0",r:14}),
+ "DB Overhead Press":PRESS(DB),
+ "Pull-ups":PULL(-12,-1),
+ "Chin-ups":PULL(-6,-1),
+ "Walking Lunges":SPLIT(false),
+ "DB Split Squat":SPLIT(true),
+ "Dips":{s:.85,env:'<line class="eq" x1="30" y1="54" x2="78" y2="54"/><line class="eq" x1="34" y1="54" x2="34" y2="102"/><line class="eq" x1="74" y1="54" x2="74" y2="102"/>'+FLOOR,poses:[
+   {S:[56,28],tor:8,legs:[{a:j=>add(j.P,[-16,24]),k:1}],arms:[{w:[55,54]}]},
+   {S:[67,42.5],tor:26,legs:[{a:j=>add(j.P,[-21,17]),k:1}],arms:[{w:[56,54],e:-1}]}]},
+ "Leg Press":(()=>{const P=[42,84],d=[Math.cos(40*D2R),-Math.sin(40*D2R)],q=[d[1],-d[0]],qn=[-q[0],-q[1]];
+   const pt=(a,b)=>add(add(P,d,a),qn,b);const r=[pt(16,-9),pt(60,-9)];
+   const foot=t=>({a:add(P,d,t),fa:Math.atan2(q[1],q[0])/D2R,k:1});
+   return {env:FLOOR+`<line class="eq" x1="${R2(r[0][0])}" y1="${R2(r[0][1])}" x2="${R2(r[1][0])}" y2="${R2(r[1][1])}"/><polyline class="eq" points="${R2(r[0][0])},${R2(r[0][1])} ${R2(r[0][0])},102"/>`+
+     `<polyline class="eqf" points="${[add(P,[-4,3]),add(add(P,[-4,3]),[-Math.sin(48*D2R),-Math.cos(48*D2R)],38),add(add(P,[-8,7]),[-Math.sin(48*D2R),-Math.cos(48*D2R)],38),add(P,[-8,7]),add(P,[14,7]),add(P,[14,3])].map(p=>R2(p[0])+","+R2(p[1])).join(" ")}"/><line class="eq" x1="${P[0]}" y1="${P[1]+7}" x2="${P[0]}" y2="102"/>`,
+     items:[{type:"poly",cls:"eqf",at:j=>{const a=add(j.a0,d,1.4);return [add(a,q,4),add(a,qn,14),add(add(a,qn,14),d,5),add(add(a,q,4),d,5)]}}],
+     poses:[{P,tor:-48,legs:[foot(42)],arms:[{w:[44,86]}]},{P,tor:-48,legs:[foot(27)],arms:[{w:[44,86]}]}]}})(),
+ "Incline DB Press":(()=>{const P=[54,80],th=-56*D2R,up=[Math.sin(th),-Math.cos(th)],fw=[Math.cos(th),Math.sin(th)];
+   const a=add(P,fw,-4.2),b=add(a,up,40),c=add(b,fw,-4),e=add(a,fw,-4);
+   return {env:FLOOR+`<polyline class="eqf" points="${[a,b,c,e].map(p=>R2(p[0])+","+R2(p[1])).join(" ")}"/><rect class="eqf" x="44" y="82.5" width="22" height="4.5" rx="2"/><line class="eq" x1="55" y1="87" x2="55" y2="102"/><line class="eq" x1="${R2(e[0])}" y1="${R2(e[1])}" x2="40" y2="102"/>`,
+     items:[DB],poses:[
+     {P,tor:-56,legs:[{a:[76,100],k:1}],arms:[{w:j=>add(j.S,[3,-29.8])}]},
+     {P,tor:-56,legs:[{a:[76,100],k:1}],arms:[{w:j=>add(add(j.S,j.fw,7),[1,0],2),e:-1}]}]}})(),
+ "Lat Pulldown":{env:FLOOR+'<line class="eq" x1="50" y1="5" x2="90" y2="5"/><line class="eq" x1="90" y1="5" x2="90" y2="102"/><circle class="eq" cx="50" cy="7" r="2.5"/><rect class="eqf" x="34" y="82" width="22" height="4.5" rx="2"/><line class="eq" x1="45" y1="86" x2="45" y2="102"/><line class="eq" x1="66" y1="66" x2="90" y2="66"/><circle class="eqf" cx="66" cy="72" r="4"/>',
+   items:[{type:"cable",from:[50,9.5],at:"w0"},{type:"ball",at:"w0",r:2.8}],poses:[
+   {P:[46,80],tor:-6,legs:[{a:[66,100],k:1}],arms:[{w:[50,22.5]}]},
+   {P:[46,80],tor:-16,hd:10,legs:[{a:[66,100],k:1}],arms:[{w:j=>add(add(j.S,j.fw,9),j.up,0.5),e:-1}]}]},
+ "DB Lateral Raise":{view:"front",env:FLOOR,items:[{type:"ball",at:"w0",r:3.6,c:"dbf"},{type:"ball",at:"w1",r:3.6,c:"dbf"}],poses:[{a:8,b:6},{a:84,b:80}]},
+ "Cable Crunch / Plank":{env:FLOOR+'<rect class="eqf" x="87" y="16" width="9" height="86" rx="1.5"/><line class="eq" x1="76" y1="8" x2="96" y2="8"/><circle class="eq" cx="80" cy="11" r="2.5"/>',
+   items:[{type:"cable",from:[80,13.5],at:"w0"}],poses:[
+   {P:[36,77.5],tor:18,legs:[{a:[15.5,99.5],k:1,fa:176}],arms:[{w:j=>add(add(j.N,j.fw,4.5),j.up,-2),e:1}]},
+   {P:[36,77.5],tor:76,hd:42,legs:[{a:[15.5,99.5],k:1,fa:176}],arms:[{w:j=>add(add(j.N,j.fw,4.5),j.up,-2),e:1}]}]},
+ "One-Arm DB Row":{env:FLOOR+'<rect class="eqf" x="8" y="82" width="68" height="5" rx="2"/><line class="eq" x1="16" y1="87" x2="16" y2="102"/><line class="eq" x1="68" y1="87" x2="68" y2="102"/>',
+   items:[DB],poses:[
+   {P:[36,58],tor:80,hd:-12,legs:[{a:[18,78],k:1,f:1,fa:184},{a:[40,100]}],arms:[{w:[67,80.5],f:1,e:-1},{w:j=>add(j.S,[-1.5,29.5])}]},
+   {P:[36,58],tor:80,hd:-12,legs:[{a:[18,78],k:1,f:1,fa:184},{a:[40,100]}],arms:[{w:[67,80.5],f:1,e:-1},{w:j=>add(add(j.P,j.up,13),j.fw,5),e:1}]}].map(p=>({...p,arms:p.arms.slice().reverse()}))},
+ "BOSU Reverse Lunge":{env:FLOOR+'<path class="eqf" d="M45 102 A15 10.5 0 0 1 75 102Z"/>',poses:[
+   {P:[57,49],tor:2,legs:[{a:[56,90],f:1},{a:[60,90.5]}],arms:[{w:j=>add(add(j.S,j.up,-29.5),j.fw,3)}]},
+   {P:[47,70],tor:10,legs:[{t:[20,101],fa:52,f:1},{a:[60,90.5]}],arms:[{w:j=>add(add(j.S,j.up,-29.5),j.fw,4)}]}]},
+ "Push-ups":{s:.8,env:FLOOR,poses:[
+   {...bodyLine([14,100.8],68,20.5,.8),legs:[{t:[14,100.8],fa:68}],arms:[{w:[67.6,100]}]},
+   {...bodyLine([14,100.8],68,7,.8),hd:-8,legs:[{t:[14,100.8],fa:68}],arms:[{w:[67.6,100],e:-1}]}]},
+ "DB Bulgarian Split Squat":{env:FLOOR+'<rect class="eqf" x="4" y="79" width="26" height="5" rx="2"/><line class="eq" x1="10" y1="84" x2="10" y2="102"/><line class="eq" x1="25" y1="84" x2="25" y2="102"/>',
+   items:[DB],poses:[
+   {P:[46,61],tor:4,legs:[{a:[24,76.5],fa:196,f:1,k:1},{a:[63,100]}],arms:[{w:hangF}]},
+   {P:[43,77],tor:8,legs:[{a:[24,76.5],fa:196,f:1,k:1},{a:[63,100]}],arms:[{w:hangF}]}]},
+ "DB Floor Press":{env:FLOOR,items:[DB],poses:[
+   {P:[62,96.5],tor:-90,legs:[{a:[82,100],k:1}],arms:[{w:[36,66.8]}]},
+   {P:[62,96.5],tor:-90,legs:[{a:[82,100],k:1}],arms:[{w:[51,82.5],e:-1}]}]},
+ "BOSU Plank":{s:.8,dur:3.6,breath:1,env:FLOOR+'<path class="eqf" d="M56 102 A16 11 0 0 1 88 102Z"/>',poses:[
+   {...bodyLine([16,100.8],68,17,.8),legs:[{t:[16,100.8],fa:68}],arms:[{w:[81.5,92.6]}]},
+   {...bodyLine([16,100.8],68,18.2,.8),legs:[{t:[16,100.8],fa:68}],arms:[{w:[81.5,92.6]}]}]},
+ _generic:{env:FLOOR,dur:3.6,breath:1,poses:[
+   {P:[49,58],tor:1,legs:[{a:[52,100]},{a:[46,100],f:1}],arms:[{w:j=>add(add(j.S,j.up,-29.5),j.fw,3)}]},
+   {P:[49,57.4],tor:1,legs:[{a:[52,100]},{a:[46,100],f:1}],arms:[{w:j=>add(add(j.S,j.up,-29.5),j.fw,3.6)}]}]}
+};
+function buildPoses(name){
+  const d=DEMO[name]||DEMO._generic,s=d.s||1;
+  return {d,b:d.poses.map(p=>{const o=d.view==="front"?front(p,s):side(p,s);
+    o.items=(d.items||[]).map(it=>{const at=typeof it.at==="function"?it.at(o.j):o.j[it.at];return {it,at}});return o})};
+}
+function demoSVG(name){
+  const {d,b}=buildPoses(name),dur=(d.dur||2.4)+"s";
+  const kt=d.breath?'keyTimes="0;0.5;1" keySplines=".45 0 .55 1;.45 0 .55 1"':'keyTimes="0;0.08;0.46;0.58;1" keySplines="0 0 1 1;.42 0 .58 1;0 0 1 1;.42 0 .58 1"';
+  const seq=a=>d.breath?[a[0],a[1],a[0]]:[a[0],a[0],a[1],a[1],a[0]];
+  const an=(attr,vals)=>{const v=seq(vals);return v.every(x=>x===v[0])?"":`<animate attributeName="${attr}" values="${v.join(";")}" ${kt} calcMode="spline" dur="${dur}" repeatCount="indefinite"/>`};
+  const pts=a=>a.map(p=>R2(p[0])+","+R2(p[1])).join(" ");
+  const poly=(cls,arr)=>`<polyline class="${cls}" points="${arr[0]}">${an("points",arr)}</polyline>`;
+  const circ=(cls,c,r)=>`<circle class="${cls}" cx="${R2(c[0][0])}" cy="${R2(c[0][1])}" r="${r}">${an("cx",c.map(p=>R2(p[0])))}${an("cy",c.map(p=>R2(p[1])))}</circle>`;
+  const item=k=>{const it=b[0].items[k].it,at=b.map(o=>o.items[k].at);
+    if(it.type==="plate")return circ("pl",at,it.r);
+    if(it.type==="ball")return circ(it.c||"dbf",at,it.r);
+    if(it.type==="cable")return poly("eq",at.map(a=>pts([it.from,a])));
+    if(it.type==="poly")return poly(it.cls,at.map(pts));
+    if(it.type==="db"){const w=it.v?6:11,h=it.v?12:6;return `<rect class="dbf${it.f?" f":""}" x="${R2(at[0][0]-w/2)}" y="${R2(at[0][1]-h/2)}" width="${w}" height="${h}" rx="2.4">${an("x",at.map(p=>R2(p[0]-w/2)))}${an("y",at.map(p=>R2(p[1]-h/2)))}</rect>`}
+    return ""};
+  const keys=Object.keys(b[0].segs),far=keys.filter(k=>b[0].segs[k].f),near=keys.filter(k=>!b[0].segs[k].f);
+  const order=[...far,...near.filter(k=>k!=="trunk"&&k.startsWith("leg")),...near.filter(k=>!k.startsWith("leg")&&!k.startsWith("arm")),...near.filter(k=>k.startsWith("arm"))];
+  let body="";for(const k of order){const cls="b"+(b[0].segs[k].f?" f":"");body+=poly(cls,b.map(o=>pts(o.segs[k].pts)));
+    if(k==="trunk"||k==="sp")body+=circ("hd",b.map(o=>o.head),R2(b[0].r))}
+  // plates sit behind the body, dumbbells in front of it
+  const pass=types=>b[0].items.map((x,k)=>types.includes(x.it.type)?item(k):"").join("");
+  return `<svg class="fig" viewBox="0 0 100 110" aria-hidden="true">${d.env||""}${pass(["cable","plate"])}${body}${pass(["db","ball","poly"])}</svg>`;
+}
+//END ANIMJS
+function honorMotion(root){
+  if(!matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  (root||document).querySelectorAll("svg.fig").forEach(svg=>{try{svg.pauseAnimations();svg.setCurrentTime(1.2)}catch(e){}});
+}
+function openDemo(n){
+  document.getElementById("zoomname").textContent=n;
+  document.getElementById("zoomsvg").innerHTML=demoSVG(n);
+  document.getElementById("zoom").classList.add("show");
+  honorMotion(document.getElementById("zoom"));
+}
+document.getElementById("zoomclose").onclick=()=>document.getElementById("zoom").classList.remove("show");
+document.getElementById("zoom").addEventListener("click",e=>{if(e.target.id==="zoom")e.currentTarget.classList.remove("show")});
+
 const LS=k=>JSON.parse(localStorage.getItem(k)||"null"), SS=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 let st=LS("rep_state")||{day:"A",where:"gym",sets:{},w:{},r:{}};
 let last=LS("rep_last")||{}, hist=LS("rep_hist")||[];
@@ -111,7 +323,7 @@ function render(){
   const id=key()+i, done=(st.sets[id]||[]);
   const card=document.createElement("div");card.className="ex"+(done.filter(Boolean).length===s?" done":"");
   const lw=last[n];
-  card.innerHTML=`<div class="exh"><div><div class="name">${n}</div><div class="scheme">${s} sets × ${r} reps</div>${lw?`<div class="last">Last: ${lw.w||"–"} lb · ${lw.r||""}</div>`:""}</div>
+  card.innerHTML=`<div class="exh"><div class="who"><button type="button" class="demo" aria-label="How to do ${n}">${demoSVG(n)}</button><div><div class="name">${n}</div><div class="scheme">${s} sets × ${r} reps</div>${lw?`<div class="last">Last: ${lw.w||"–"} lb · ${lw.r||""}</div>`:""}</div></div>
   <div class="wt"><input inputmode="decimal" placeholder="${lw&&lw.w?lw.w:"lb"}" value="${st.w[id]||""}"><small>lb</small></div></div><div class="sets"></div>`;
   card.querySelector("input").oninput=e=>{st.w[id]=e.target.value;save()};
   const sets=card.querySelector(".sets");
@@ -123,8 +335,10 @@ function render(){
    ri.oninput=e=>{const a=st.r[id]||[];a[k]=e.target.value;st.r[id]=a;save()};
    wrap.appendChild(b);wrap.appendChild(ri);sets.appendChild(wrap);
   }
+  card.querySelector(".demo").onclick=()=>openDemo(n);
   list.appendChild(card);
  });
+ honorMotion();
  progress();renderHist();
 }
 function progress(){

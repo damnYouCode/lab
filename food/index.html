@@ -12,6 +12,9 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20180%20180'%3E%3Cdefs%3E%3ClinearGradient%20id='g'%20gradientUnits='userSpaceOnUse'%20x1='40'%20y1='28'%20x2='140'%20y2='156'%3E%3Cstop%20offset='0'%20stop-color='%23ff3d6e'/%3E%3Cstop%20offset='1'%20stop-color='%23ffb020'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width='180'%20height='180'%20rx='40'%20fill='%230b0b12'/%3E%3Cg%20fill='url(%23g)'%3E%3Crect%20x='57'%20y='28'%20width='14'%20height='56'%20rx='7'/%3E%3Crect%20x='83'%20y='28'%20width='14'%20height='56'%20rx='7'/%3E%3Crect%20x='109'%20y='28'%20width='14'%20height='56'%20rx='7'/%3E%3Cpath%20d='M57%2072h66v8a33%2033%200%200%201-33%2033a33%2033%200%200%201-33-33z'/%3E%3Crect%20x='80'%20y='100'%20width='20'%20height='56'%20rx='10'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20180%20180'%3E%3Cdefs%3E%3ClinearGradient%20id='g'%20gradientUnits='userSpaceOnUse'%20x1='40'%20y1='28'%20x2='140'%20y2='156'%3E%3Cstop%20offset='0'%20stop-color='%23ff3d6e'/%3E%3Cstop%20offset='1'%20stop-color='%23ffb020'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width='180'%20height='180'%20rx='40'%20fill='%230b0b12'/%3E%3Cg%20fill='url(%23g)'%3E%3Crect%20x='57'%20y='28'%20width='14'%20height='56'%20rx='7'/%3E%3Crect%20x='83'%20y='28'%20width='14'%20height='56'%20rx='7'/%3E%3Crect%20x='109'%20y='28'%20width='14'%20height='56'%20rx='7'/%3E%3Cpath%20d='M57%2072h66v8a33%2033%200%200%201-33%2033a33%2033%200%200%201-33-33z'/%3E%3Crect%20x='80'%20y='100'%20width='20'%20height='56'%20rx='10'/%3E%3C/g%3E%3C/svg%3E">
 <style>
+.datahead{margin:22px 0 2px;padding-top:16px;border-top:1px solid #2a2a3d;font-weight:900;font-size:17px}
+.datarow{display:flex;gap:8px}.datarow .ghost{flex:1}
+.bkstat{margin-top:8px;font-size:12px;color:var(--dim);font-weight:700;text-align:center}.bkstat.ok{color:var(--ok)}
 :root{--bg:#0b0b12;--card:#161622;--card2:#1e1e2e;--text:#f4f4f8;--dim:#8a8aa3;--a:#ff3d6e;--b:#ffb020;--ok:#2ee59d;--warn:#ffcc66}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,sans-serif}
@@ -163,7 +166,7 @@ summary{color:var(--dim);font-size:13px;font-weight:800}
 <header>
   <div><h1>FEED</h1><div class="sub" id="dateline"></div></div>
   <div class="hright">
-    <button class="gear" id="gear" aria-label="Targets">⚙︎</button>
+    <button class="gear" id="gear" aria-label="Targets and your data">⚙︎</button>
     <div class="ring" title="Protein"><svg width="70" height="70"><circle cx="35" cy="35" r="29" stroke="#24243a" stroke-width="7" fill="none"/><circle id="prog" cx="35" cy="35" r="29" stroke="url(#gg)" stroke-width="7" fill="none" stroke-linecap="round" stroke-dasharray="182.2" stroke-dashoffset="182.2" style="transition:.4s"/><defs><linearGradient id="gg"><stop offset="0" stop-color="#2ee59d"/><stop offset="1" stop-color="#7cf5c8"/></linearGradient></defs></svg><span><b id="protv">0g</b><small id="prott">PROTEIN</small></span></div>
   </div>
 </header>
@@ -260,7 +263,12 @@ summary{color:var(--dim);font-size:13px;font-weight:800}
 <div class="sheet" id="tgtsheet"><div class="panel">
   <h2>Daily targets</h2><div class="sub">Rep sets these. Leave any blank you don't have yet.</div>
   <div class="grid4" style="margin-top:14px"><label>kcal<input id="tcal" inputmode="decimal" placeholder="—"></label><label>Protein g<input id="tpro" inputmode="decimal" placeholder="—"></label><label>Carbs g<input id="tcarb" inputmode="decimal" placeholder="—"></label><label>Fat g<input id="tfat" inputmode="decimal" placeholder="—"></label></div>
-  <button class="big" id="tgtsave">Save targets</button><button class="ghost" id="tgtcancel">Cancel</button>
+  <button class="big" id="tgtsave">Save targets</button>
+  <div class="datahead">Your data</div>
+  <div class="sub">Everything you log is also kept permanently, so Rep can look back over months and years.</div>
+  <div class="datarow"><button class="ghost" id="expjson">⬇︎ Export JSON</button><button class="ghost" id="expcsv">⬇︎ Export CSV</button></div>
+  <button class="ghost" id="backup">☁️ Back up history</button><div class="bkstat" id="bkstat"></div>
+  <button class="ghost" id="tgtcancel">Cancel</button>
 </div></div>
 
 <!-- copy fallback -->
@@ -691,7 +699,7 @@ const stepQ=dir=>{let q=C.num($("qty").value)||0;const s=ed.amode==="g"?10:.5;q=
 $("qminus").onclick=()=>stepQ(-1);$("qplus").onclick=()=>stepQ(1);
 $("edcancel").onclick=()=>{hide("edsheet");ed=null};
 $("edlabel").onclick=()=>{pendingBarcode=$("edcode").value.trim();hide("edsheet");$("labelfile").click()};
-$("eddel").onclick=()=>{if(!ed||!confirm("Delete this item? Rep gets told too."))return;const list=dayItems(ed.date);const i=list.findIndex(x=>x.id===ed.id);if(i<0)return;const[gone]=list.splice(i,1);saveDays();hide("edsheet");render();sendItems("delete",gone.meal,[gone],ed.date);ed=null};
+$("eddel").onclick=()=>{if(!ed||!confirm("Delete this item? Rep gets told too."))return;const list=dayItems(ed.date);const i=list.findIndex(x=>x.id===ed.id);if(i<0)return;const[gone]=list.splice(i,1);saveDays();hide("edsheet");render();const dd=ed.date;queueHistDelete(gone,dd);sendItems("delete",gone.meal,[gone],dd).then(bkSoon);ed=null};
 $("edsave").onclick=()=>{
  if(!ed)return;if(ed.basis)readBasis();
  const code=$("edcode").value.replace(/\D/g,"");
@@ -717,7 +725,7 @@ function commitItem(it,isEdit,fav){
  if(i>=0)list[i]=Object.assign(list[i],it);else list.push(it);
  list.sort((a,b)=>(a.time||"").localeCompare(b.time||""));
  saveDays();remember(it,fav);curMeal=it.meal;render();
- sendItems(isEdit?"update":"add",it.meal,[it],it.date);
+ sendItems(isEdit?"update":"add",it.meal,[it],it.date).then(bkSoon);
 }
 
 // ---------- recent & favorites ----------
@@ -754,7 +762,7 @@ $("descsave").onclick=()=>{const d=$("desctext").value.trim();if(!d){toast("Desc
  it.estimate_needed=TK.some(k=>it[k]==null);hide("descsheet");commitItem(it,false)};
 
 // ---------- targets ----------
-$("gear").onclick=()=>{setv("tcal",targets.cal);setv("tpro",targets.pro);setv("tcarb",targets.carb);setv("tfat",targets.fat);show("tgtsheet")};
+$("gear").onclick=()=>{setv("tcal",targets.cal);setv("tpro",targets.pro);setv("tcarb",targets.carb);setv("tfat",targets.fat);renderBk();show("tgtsheet")};
 $("tgtcancel").onclick=()=>hide("tgtsheet");
 $("tgtsave").onclick=()=>{targets={cal:C.num($("tcal").value),pro:C.num($("tpro").value),carb:C.num($("tcarb").value),fat:C.num($("tfat").value)};store(LS.tgt,targets);hide("tgtsheet");render();toast("Targets saved")};
 
@@ -887,7 +895,7 @@ $("busycancel").onclick=async()=>{ocrCancelled=true;hide("busysheet");if(ocrWork
 $("suggest").onclick=e=>{const a=e.target.closest("[data-apply]"),d=e.target.closest("[data-dismiss]");const id=(a||d)&&(a||d).dataset[a?"apply":"dismiss"];if(!id)return;
  const it=dayItems(today()).find(x=>x.id===id);if(!it)return;
  if(a){C.applySuggestion(it);toast("Applied Rep's numbers")}else{C.dismissSuggestion(it);toast("Kept your numbers")}
- saveDays();render()}; // local only: no POST, Rep already has these numbers
+ saveDays();render();bkSoon()}; // no POST to Rep (he already has these numbers); the permanent copy is updated quietly
 $("meals").onclick=e=>{const b=e.target.closest("[data-meal]");if(!b)return;curMeal=b.dataset.meal;render()};
 $("daylist").onclick=e=>{
  const cp=e.target.closest("[data-copy]");if(cp){const m=cp.dataset.copy,its=dayItems(today()).filter(i=>i.meal===m);openCopy(C.MEAL_LABEL[m]+" for Rep",C.summaryText("add",m,its.map(C.itemOut),today(),its[0]?its[0].time:"",C.totals(dayItems(today())),targets),()=>sendItems("add",m,its,today()));return}
@@ -915,15 +923,70 @@ async function pullEstimates(onlyPending){
     if(r.changed){changed=true;if(d===today())filled+=r.filled.length}
    }catch(e){/* offline or relay down: stay pending */}
   }
-  if(changed){saveDays();render();if(filled&&!anySheetOpen())toast(`🤖 Rep estimated ${filled} item${filled>1?"s":""}`)}
+ if(changed){saveDays();render();bkSoon();if(filled&&!anySheetOpen())toast(`🤖 Rep estimated ${filled} item${filled>1?"s":""}`)}
  }finally{pulling=false}
  return changed;
 }
 setInterval(()=>{if(document.visibilityState==="visible"&&hasPending())pullEstimates(true)},60000);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")pullEstimates(false)});
+
+// ---------- your data: export + permanent backup (relay /history/import; history only, never forwarded to Rep) ----------
+const HIST_URL=RELAY_URL+"history/import";
+const LS_BK="feed.v1.backup",LS_DEL="feed.v1.hist_del";
+function histRecord(it,d){const o=C.itemOut(it);return Object.assign({type:"food"},o,{date:it.date||d,time:it.time||"",meal:it.meal,device:DEVICE,rep_est:!!it.rep_est,rep_note:it.rep_note||""})}
+const hsig=(it,d)=>JSON.stringify(histRecord(it,d));
+function allItems(){const out=[];for(const d of Object.keys(days).sort())for(const it of days[d])out.push([it,d]);return out}
+const dirty=()=>allItems().filter(([it,d])=>it.bk!==hsig(it,d));
+function queueHistDelete(it,d){const q=load(LS_DEL,[]);q.push({type:"food",date:it.date||d,id:it.id});store(LS_DEL,q.slice(-500))}
+let backingUp=false,bkAgain=false;
+async function backupHistory(manual){
+ if(backingUp){bkAgain=true;return}backingUp=true;
+ try{
+  const todo=manual?allItems():dirty();let dels=load(LS_DEL,[]);
+  if(!todo.length&&!dels.length){if(manual)toast("All backed up ☁️");return}
+  for(let i=0;i<Math.max(todo.length,1);i+=100){
+   const chunk=todo.slice(i,i+100).map(([it,d])=>[it,d,hsig(it,d)]),del=i===0?dels.slice(0,100):[];
+   if(!chunk.length&&!del.length)break;
+   const body={};if(chunk.length)body.records=chunk.map(([,,sg])=>JSON.parse(sg));if(del.length)body.delete=del;
+   const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),15000);
+   const res=await fetch(HIST_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),signal:ctrl.signal}).finally(()=>clearTimeout(t));
+   const j=await res.json().catch(()=>null);
+   if(!res.ok||!j||!j.ok)throw new Error("backup "+res.status);
+   const bad=new Set(j.rejected||[]);chunk.forEach(([it,d,sg],k)=>{if(!bad.has(k))it.bk=sg});
+   if(del.length){dels=load(LS_DEL,[]).slice(del.length);store(LS_DEL,dels)}
+  }
+  saveDays();store(LS_BK,{at:new Date().toISOString()});
+  if(manual)toast(`Backed up ${todo.length} item${todo.length===1?"":"s"} ☁️`);
+ }catch(e){if(manual)toast("Couldn't back up, try again later",3000)}
+ finally{backingUp=false;renderBk();if(bkAgain){bkAgain=false;setTimeout(()=>backupHistory(false),1500)}}
+}
+const bkSoon=()=>{clearTimeout(bkSoon._t);bkSoon._t=setTimeout(()=>backupHistory(false),4000)};
+function renderBk(){
+ const el=$("bkstat");if(!el)return;const b=load(LS_BK,null),n=allItems().length,w=dirty().length+load(LS_DEL,[]).length;
+ el.className="bkstat"+(b&&!w?" ok":"");
+ el.textContent=!n?"Your food backs up automatically once you log some.":
+  b?(w?`☁️ ${w} change${w>1?"s":""} waiting to back up`:`☁️ All ${n} item${n>1?"s":""} backed up · ${new Date(b.at).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`):"Not backed up yet";
+}
+async function saveFile(name,text,type){
+ const blob=new Blob([text],{type});
+ try{const f=new File([blob],name,{type});if(/iPhone|iPad|Android/i.test(navigator.userAgent)&&navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});return}}
+ catch(e){if(e&&e.name==="AbortError")return}
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
+}
+const csvCell=v=>{const x=v==null?"":String(v);return /[",\n\r]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x};
+const CSV_COLS=["date","time","meal","name","brand","amount","grams","calories","protein_g","carbs_g","fat_g","sodium_mg","sugars_g","fiber_g","source","estimate_needed","rep_est","barcode","serving_size","description","id"];
+function foodCsv(){return[CSV_COLS.join(","),...allItems().map(([it,d])=>{const r=histRecord(it,d);return CSV_COLS.map(c=>csvCell(r[c])).join(",")})].join("\r\n")+"\r\n"}
+const stripLocal=o=>{const x={};for(const d of Object.keys(o))x[d]=o[d].map(({bk,...it})=>it);return x};
+$("expjson").onclick=()=>{if(!allItems().length){toast("Nothing logged yet");return}
+ saveFile(`feed-history-${today()}.json`,JSON.stringify({app:"Feed",version:1,exported_at:new Date().toISOString(),device:DEVICE,targets,days:stripLocal(days),records:allItems().map(([it,d])=>histRecord(it,d))},null,1),"application/json")};
+$("expcsv").onclick=()=>{if(!allItems().length){toast("Nothing logged yet");return}saveFile(`feed-history-${today()}.csv`,foodCsv(),"text/csv")};
+$("backup").onclick=()=>backupHistory(true);
 render();
 pullEstimates(false);
-window.Feed={DEVICE,pullEstimates,get days(){return days},get recent(){return recent},openEditor,sendItems,parseLabel:C.parseLabel,preprocess,ocrLabel,threshold,onCode,render};
+// one-time backfill of everything logged before this update, then self-healing: anything not yet backed up goes on the next open
+setTimeout(()=>backupHistory(false),2500);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")bkSoon()});
+window.Feed={backupHistory,foodCsv,DEVICE,pullEstimates,get days(){return days},get recent(){return recent},openEditor,sendItems,parseLabel:C.parseLabel,preprocess,ocrLabel,threshold,onCode,render};
 
 </script>
 </body>

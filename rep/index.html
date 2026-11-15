@@ -86,6 +86,8 @@ button{font-family:inherit;cursor:pointer}
 .panel pre{white-space:pre-wrap;background:var(--card2);border-radius:14px;padding:12px;font-size:13px;color:var(--text);max-height:40vh;overflow:auto;font-family:ui-monospace,Menlo,monospace}
 .big{width:100%;padding:16px;border-radius:16px;border:0;font-weight:900;font-size:17px;color:#fff;background:linear-gradient(135deg,var(--a),var(--b));margin-top:8px}
 .ghost{width:100%;padding:13px;border-radius:16px;border:1px solid #2a2a3d;background:transparent;color:var(--dim);font-weight:800;font-size:15px;margin-top:8px}
+.datarow{display:flex;gap:8px}.datarow .ghost{flex:1}
+.bkstat{margin-top:8px;font-size:12px;color:var(--dim);font-weight:700;text-align:center}.bkstat.ok{color:#2ee59d}
 
 .who{display:flex;align-items:flex-start;gap:8px;min-width:0;flex:1}
 .demo{flex:none;width:102px;height:112px;padding:0;margin:-2px 0 0 -6px;border:1px solid #24243a;background:#0c0c16;border-radius:14px;overflow:hidden}
@@ -118,7 +120,9 @@ button{font-family:inherit;cursor:pointer}
 <div class="where"><button class="pill on" data-w="gym">🏋️ Life Time</button><button class="pill" data-w="home">🏠 Home</button></div>
 <div class="note">Tap a circle when you finish a set and it starts your rest timer. Type the weight and the reps you actually hit. Hit the top of the range on every set and you add weight next time.</div>
 <div id="list"></div>
-<div class="hist"><h3>Recent sessions</h3><div id="hist"></div><button class="ghost" id="copyall">📋 Copy all sessions for Rep</button></div>
+<div class="hist"><h3>Recent sessions</h3><div id="hist"></div><button class="ghost" id="copyall">📋 Copy all sessions for Rep</button>
+<div class="datarow"><button class="ghost" id="expjson">⬇︎ Export JSON</button><button class="ghost" id="expcsv">⬇︎ Export CSV</button></div>
+<button class="ghost" id="backup">☁️ Back up history</button><div class="bkstat" id="bkstat"></div></div>
 <div class="sheet" id="sheet"><div class="panel"><h2 id="sheettitle">Session logged 🏆</h2><div class="sub">Tap below, then paste it in your chat with Rep.</div><pre id="sumtext"></pre><button class="big" id="sendrep">📋 Send to Rep</button><button class="ghost" id="closesheet">Done</button></div></div>
 <div class="sheet" id="addsheet"><div class="panel tall"><h2 id="addtitle">Add exercise</h2><div class="sub" id="addsub" style="margin-bottom:10px">Pick one or type your own.</div>
 <input id="addname" class="tin" placeholder="Exercise name" maxlength="40" autocomplete="off" enterkeyhint="done">
@@ -398,6 +402,9 @@ document.getElementById("zoom").addEventListener("click",e=>{if(e.target.id==="z
 const LS=k=>JSON.parse(localStorage.getItem(k)||"null"), SS=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 let st=LS("rep_state")||{day:"A",where:"gym",sets:{},w:{},r:{}};
 let last=LS("rep_last")||{}, hist=LS("rep_hist")||[];
+const HIST_MAX=1000; // was 50; the permanent copy lives on the relay (KV), this is the on-phone copy
+const newId=()=>"w"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+if(hist.some(e=>!e.id)){hist.forEach(e=>{if(!e.id)e.id=newId()});SS("rep_hist",hist)}
 const key=()=>st.where+st.day;
 document.getElementById("dateline").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric"});
 function save(){SS("rep_state",st)}
@@ -464,6 +471,7 @@ const localIso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"
 function renderHist(){
  const h=document.getElementById("hist");
  h.innerHTML=hist.length?hist.slice(0,6).map((x,i)=>`<div class="hrow"><b>${esc(x.date)} · Day ${esc(x.day)}</b> (${x.where==="gym"?"Life Time":"Home"}) · ${x.sets} sets<br>${(x.items||[]).map(esc).join(" · ")}${i===0&&x.iso&&x.iso===todayIso()?`<br><button type="button" class="logx" id="logx">+ Log extra</button>`:""}</div>`).join(""):`<div class="hrow">No sessions yet. Go get the first one.</div>`;
+ renderBk();
  const lx=document.getElementById("logx");if(lx)lx.onclick=()=>{adx=[];adst={sets:{},w:{},r:{}};openAdd("log")};
 }
 // ---- add sheet (mode "day" adds to the current day; mode "log" feeds the after-Finish log view)
@@ -559,15 +567,16 @@ document.getElementById("finish").onclick=()=>{
  const lastBefore=JSON.stringify(last);
  const {sets,items,lines,exercises}=collect(list,st);
  if(!sets){last=JSON.parse(lastBefore);toast("Check off a set first 😤");return}
- const dt=new Date();const entry={date:dt.toLocaleDateString(undefined,{month:"short",day:"numeric"}),iso:localIso(dt),day,where,sets,items,lines};
+ const dt=new Date();const entry={id:newId(),date:dt.toLocaleDateString(undefined,{month:"short",day:"numeric"}),iso:localIso(dt),day,where,sets,items,lines,exercises,main_sets:sets,main_lines:lines.slice(),adds:[]};
  hist.unshift(entry);
- SS("rep_hist",hist.slice(0,50));SS("rep_last",last);
+ SS("rep_hist",hist.slice(0,HIST_MAX));SS("rep_last",last);
  clearIds(st,list.map(it=>it.id));
  delete xtoday[k];saveExtras();
  st.day={A:"B",B:"C",C:"A"}[day];save();render();window.scrollTo({top:0,behavior:"smooth"});
  const summary=fmt(entry);
  openSheet(summary);
- sendToRep({type:"workout",date:entry.iso,day,where,exercises,summary});
+ sendToRep({type:"workout",id:entry.id,date:entry.iso,day,where,sets,lines,exercises,summary});
+ setTimeout(()=>backupHistory(false),4000);
 };
 document.getElementById("logsend").onclick=()=>{
  const e=hist[0];if(!e||!adx.length)return;
@@ -577,11 +586,15 @@ document.getElementById("logsend").onclick=()=>{
  exercises.forEach(x=>{x.extra=true;x.pinned=false});
  const summary=`ADDENDUM to ${e.iso} Day ${e.day} (${e.where==="gym"?"Life Time":"Home"}):\n`+lines.join("\n");
  const prevLines=e.lines||(e.items||[]).slice();
+ if(!e.id)e.id=newId();
+ if(!e.main_lines){e.main_lines=prevLines.slice();e.main_sets=e.sets||0}
+ e.adds=e.adds||[];const aid=e.id+"-a"+(e.adds.length+1);e.adds.push({id:aid,sets,lines:lines.slice(),exercises});
  e.sets=(e.sets||0)+sets;e.items=(e.items||[]).concat(items);e.lines=prevLines.concat(lines.map(l=>"+ "+l));
- SS("rep_hist",hist.slice(0,50));SS("rep_last",last);
+ SS("rep_hist",hist.slice(0,HIST_MAX));SS("rep_last",last);
  document.getElementById("logsheet").classList.remove("show");adx=[];adst={sets:{},w:{},r:{}};
  renderHist();
- sendToRep({type:"workout",date:e.iso,day:e.day,where:e.where,addendum:true,exercises,summary},()=>openSheet(summary,"Couldn't send 😕"));
+ sendToRep({type:"workout",id:aid,parent:e.id,date:e.iso,day:e.day,where:e.where,addendum:true,sets,lines,exercises,summary},()=>openSheet(summary,"Couldn't send 😕"));
+ setTimeout(()=>backupHistory(false),4000);
 };
 function fmt(e){return `REP LOG ${e.iso||e.date} · Day ${e.day} (${e.where==="gym"?"Life Time":"Home"})\n`+(e.lines||e.items).join("\n")}
 function openSheet(t,title){document.getElementById("sheettitle").textContent=title||"Session logged 🏆";document.getElementById("sumtext").textContent=t;document.getElementById("sheet").classList.add("show")}
@@ -589,6 +602,72 @@ async function copy(t){try{await navigator.clipboard.writeText(t);toast("Copied.
 document.getElementById("sendrep").onclick=()=>copy(document.getElementById("sumtext").textContent);
 document.getElementById("closesheet").onclick=()=>document.getElementById("sheet").classList.remove("show");
 document.getElementById("copyall").onclick=()=>{if(!hist.length){toast("No sessions yet");return}openSheet(hist.map(fmt).join("\n\n"))};
+// ---- your data: export + permanent backup (relay /history/import, history only, never forwarded to Rep) ----
+const HIST_URL=RELAY_URL+"history/import";
+// one entry -> permanent records: the session itself + one per "Log extra" addendum
+function histRecords(e){
+ if(!e||!e.iso)return [];
+ const main={type:"workout",id:e.id,date:e.iso,day:e.day,where:e.where,sets:e.main_sets!=null?e.main_sets:(e.sets||0),
+  lines:(e.main_lines||e.lines||e.items||[]).slice(0,80),exercises:(e.exercises||[]).slice(0,30)};
+ return [main,...(e.adds||[]).map(a=>({type:"workout",id:a.id,parent:e.id,addendum:true,date:e.iso,day:e.day,where:e.where,sets:a.sets,lines:a.lines.slice(0,80),exercises:a.exercises.slice(0,30)}))];
+}
+const sig=e=>JSON.stringify(histRecords(e));
+let backingUp=false;
+async function backupHistory(manual){
+ if(backingUp)return;backingUp=true;
+ try{
+  const todo=hist.filter(e=>e.iso&&(manual||e.bk!==sig(e)));
+  if(!todo.length){if(manual)toast("All backed up ☁️");return}
+  // whole sessions per request (≤100 records), each tagged with the exact version sent
+  const batches=[];let cur=[],n=0;
+  todo.forEach(e=>{const recs=histRecords(e);if(n+recs.length>100&&cur.length){batches.push(cur);cur=[];n=0}cur.push({e,sg:JSON.stringify(recs),recs});n+=recs.length});
+  if(cur.length)batches.push(cur);
+  for(const b of batches){
+   const recs=b.flatMap(x=>x.recs);
+   const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),15000);
+   const res=await fetch(HIST_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({records:recs}),signal:ctrl.signal}).finally(()=>clearTimeout(t));
+   const j=await res.json().catch(()=>null);
+   if(!res.ok||!j||!j.ok)throw new Error("backup "+res.status);
+   const bad=new Set((j.rejected||[]).map(k=>recs[k]));
+   b.forEach(x=>{if(!x.recs.some(r=>bad.has(r)))x.e.bk=x.sg});
+  }
+  SS("rep_hist",hist.slice(0,HIST_MAX));SS("rep_backup",{at:new Date().toISOString()});
+  if(manual)toast(`Backed up ${todo.length} session${todo.length>1?"s":""} ☁️`);
+ }catch(e){if(manual)toast("Couldn't back up, try again later")}
+ finally{backingUp=false;renderBk()}
+}
+function renderBk(){
+ const el=document.getElementById("bkstat");if(!el)return;const b=LS("rep_backup");
+ const waiting=hist.filter(e=>e.iso&&e.bk!==sig(e)).length;
+ el.className="bkstat"+(b&&!waiting?" ok":"");
+ el.textContent=!hist.length?"Your sessions back up automatically once you log one.":
+  b?(waiting?`☁️ ${waiting} session${waiting>1?"s":""} waiting to back up`:`☁️ All ${hist.length} session${hist.length>1?"s":""} backed up · ${new Date(b.at).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`):"Not backed up yet";
+}
+async function saveFile(name,text,type){
+ const blob=new Blob([text],{type});
+ try{const f=new File([blob],name,{type});if(/iPhone|iPad|Android/i.test(navigator.userAgent)&&navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});return}}
+ catch(e){if(e&&e.name==="AbortError")return}
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
+}
+const csvCell=v=>{const x=v==null?"":Array.isArray(v)?v.join("/"):String(v);return /[",\n\r]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x};
+function histCsv(){
+ const cols=["date","day","where","addendum","exercise","scheme","weight_lb","reps","sets_done","sets_planned","extra","session_sets","id","parent"];
+ const rows=[cols.join(",")];
+ hist.slice().reverse().forEach(e=>histRecords(e).forEach(r=>{
+  const exs=r.exercises.length?r.exercises:r.lines.map(l=>({name:l}));
+  exs.forEach(x=>{const o={date:r.date,day:r.day,where:r.where,addendum:!!r.addendum,exercise:x.name,scheme:x.scheme,weight_lb:x.weight_lb,reps:x.reps,sets_done:x.sets_done,sets_planned:x.sets_planned,extra:!!x.extra,session_sets:r.sets,id:r.id,parent:r.parent||""};rows.push(cols.map(c=>csvCell(o[c])).join(","))});
+ }));
+ return rows.join("\r\n")+"\r\n";
+}
+const stamp=()=>todayIso();
+document.getElementById("expjson").onclick=()=>{if(!hist.length){toast("No sessions yet");return}
+ saveFile(`reps-history-${stamp()}.json`,JSON.stringify({app:"Reps",version:1,exported_at:new Date().toISOString(),sessions:hist.map(({bk,...e})=>e),records:hist.flatMap(histRecords),last_weights:last},null,1),"application/json")};
+document.getElementById("expcsv").onclick=()=>{if(!hist.length){toast("No sessions yet");return}saveFile(`reps-history-${stamp()}.csv`,histCsv(),"text/csv")};
+document.getElementById("backup").onclick=()=>backupHistory(true);
+renderBk();
+// one-time backfill of everything logged before this update, then self-healing: anything not yet backed up goes on the next open
+setTimeout(()=>backupHistory(false),2500);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")setTimeout(()=>backupHistory(false),2500)});
 render();
 </script>
 </body>

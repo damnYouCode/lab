@@ -87,6 +87,9 @@ h1{font-size:30px;font-weight:900;margin:0;letter-spacing:-.5px;background:linea
 .item .kc small{display:block;color:var(--dim);font-weight:700;font-size:11px}
 .badge{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;font-size:10.5px;font-weight:800;vertical-align:middle;background:#2a2a3d;color:var(--dim)}
 .badge.est{background:rgba(255,204,102,.14);color:var(--warn)}
+.badge.yours{background:rgba(255,176,32,.18);color:var(--b);margin-left:0}
+.edcustom{display:flex;align-items:center;gap:10px;margin:8px 0 2px;flex-wrap:wrap}
+#edfixserv{margin-top:8px;width:100%}
 .item .am .badge{margin:0 6px 0 0;padding:1px 6px}
 .badge.rep{background:rgba(46,229,157,.14);color:#8ff0c6}
 .sugg{background:linear-gradient(135deg,rgba(255,61,110,.12),rgba(255,176,32,.10));border:1px solid rgba(255,176,32,.45);border-radius:18px;padding:12px 14px;margin-bottom:12px}
@@ -245,6 +248,8 @@ summary{color:var(--dim);font-size:13px;font-weight:800}
 <div class="sheet" id="edsheet"><div class="panel">
   <div class="ehead"><img class="thumb hidden" id="edthumb" alt=""><div style="flex:1;min-width:0"><h2 id="edtitle">Add food</h2><div class="sub" id="edsub"></div></div></div>
   <div id="edmsg"></div>
+  <div id="edcustom" class="edcustom hidden"><span class="badge yours">Your numbers</span><button type="button" class="mini" id="edovreset">Reset to database</button></div>
+  <div id="edwarn"></div>
   <label class="lbl">Name</label><input class="tin" id="edname" maxlength="80" placeholder="e.g. Greek yogurt" autocomplete="off">
   <div class="grid3" style="margin-top:8px;grid-template-columns:2fr 1.3fr"><label>Brand<input id="edbrand" maxlength="60" placeholder="optional" style="text-align:left;padding-left:10px"></label><label>Barcode<input id="edcode" maxlength="14" inputmode="numeric" placeholder="—"></label></div>
   <div id="edbasis" class="basis hidden">
@@ -327,7 +332,7 @@ const MEALS=["breakfast","lunch","dinner","snack"];
 const MEAL_LABEL={breakfast:"Breakfast",lunch:"Lunch",dinner:"Dinner",snack:"Snack"};
 const MEAL_ICON={breakfast:"🍳",lunch:"🥪",dinner:"🍽️",snack:"🍎"};
 const OFF_URL="https://world.openfoodfacts.org/api/v2/product/";
-const OFF_FIELDS="product_name,brands,serving_size,serving_quantity,serving_quantity_unit,nutrition_data_per,nutriments";
+const OFF_FIELDS="product_name,brands,serving_size,serving_quantity,serving_quantity_unit,nutrition_data_per,nutriments,quantity";
 const pad=n=>String(n).padStart(2,"0");
 // LOCAL calendar date, never toISOString (that's UTC and flips after 7 PM Eastern)
 const localIso=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
@@ -376,7 +381,7 @@ function offToBasis(p){
  const pick=sfx=>{const sod=num(n["sodium"+sfx]);const o={cal:kcal(sfx),p:num(n["proteins"+sfx]),c:num(n["carbohydrates"+sfx]),f:num(n["fat"+sfx]),sod:sod==null?null:sod*1000,sug:num(n["sugars"+sfx]),fib:num(n["fiber"+sfx])};return(o.cal==null&&o.p==null&&o.c==null&&o.f==null)?null:o};
  const sq=num(p&&p.serving_quantity);
  const unit=/ml/i.test((p&&(p.serving_quantity_unit||p.nutrition_data_per||p.serving_size))||"")?"ml":"g";
- return{per100:pick("_100g"),perServing:pick("_serving"),servingG:sq&&sq>0?sq:null,servingText:(p&&p.serving_size)||"",servingsPerContainer:null,unit};
+ return{per100:pick("_100g"),perServing:pick("_serving"),servingG:sq&&sq>0?sq:null,servingText:(p&&p.serving_size)||"",servingsPerContainer:null,unit,packageG:parsePackageG(p&&p.quantity),packageText:(p&&p.quantity)||""};
 }
 function canMode(b,mode){if(!b)return false;return mode==="g"?!!(b.per100||(b.perServing&&b.servingG)):!!(b.perServing||(b.per100&&b.servingG))}
 function amountText(b,mode,qty,grams){const u=b&&b.unit==="ml"?"mL":"g";if(mode==="g")return r1(qty)+" "+u;const s=r1(qty)+(qty===1?" serving":" servings");return grams!=null?s+" ("+r0(grams)+" "+u+")":s}
@@ -389,6 +394,96 @@ function computeMacros(b,mode,qty){
  if(!src)return null;
  const m=k=>src[k]==null?null:src[k]*f;
  return{calories:r0(m("cal")),protein_g:r1(m("p")),carbs_g:r1(m("c")),fat_g:r1(m("f")),sodium_mg:r0(m("sod")),sugars_g:r1(m("sug")),fiber_g:r1(m("fib")),grams:grams==null?null:r1(grams),amount:amountText(b,mode,qty,grams)};
+}
+
+// ---------- package size, sanity check, barcode overrides ----------
+function parsePackageG(q){
+ if(!q)return null;
+ const m=String(q).match(/([\d.]+)\s*(kg|g|gr|grams?|lb|lbs|pounds?|oz|fl\s*oz)\b/i);
+ if(!m)return null;
+ const n=num(m[1]);if(n==null)return null;
+ const u=m[2].toLowerCase().replace(/\s+/g,"");
+ if(u==="kg")return n*1000;
+ if(u==="lb"||u==="lbs"||u==="pounds")return n*453.592;
+ if(u==="oz"||u==="floz")return n*28.3495;
+ return n;
+}
+const SANITY_MSG="These numbers don't add up — check the label.";
+function atwaterKcal(p,c,f){p=num(p);c=num(c);f=num(f);return(p==null||c==null||f==null)?null:4*p+4*c+9*f}
+// ~25% mismatch (25 kcal floor) or an implausibly large serving (>250 g, or more than the package)
+function nutritionSanity(o){
+ o=o||{};
+ const reasons=[];
+ const a=atwaterKcal(o.protein_g,o.carbs_g,o.fat_g),cal=num(o.calories);
+ if(a!=null&&cal!=null&&cal>0&&Math.abs(a-cal)>Math.max(25,.25*cal))reasons.push("atwater");
+ const g=num(o.servingG),pkg=num(o.packageG),unit=(o.unit||"g").toLowerCase();
+ if(g!=null&&unit!=="ml"&&g>250)reasons.push("serving");
+ if(g!=null&&pkg!=null&&g>pkg+1)reasons.push("package");
+ return{ok:!reasons.length,atwater:a,reasons,message:reasons.length?SANITY_MSG:""};
+}
+// Per-serving label values stored as per-100g: macros look like one modest serving, kcal/100g looks like a true density
+function detectMisplacedServing(basis){
+ if(!basis||!basis.per100)return null;
+ const n=basis.per100;if(n.p==null||n.c==null||n.f==null||n.cal==null)return null;
+ const a=atwaterKcal(n.p,n.c,n.f);if(a==null)return null;
+ const gap=Math.abs(a-n.cal)/Math.max(n.cal,a,1);
+ if(!(gap>0.25&&a>=20&&a<=400&&n.cal>a*1.4))return null;
+ const gEst=n.cal>0?100*a/n.cal:null;
+ const servingG=(gEst&&gEst>=5&&gEst<=150)?r0(gEst):null;
+ return{perServing:{cal:r0(a),p:n.p,c:n.c,f:n.f,sod:n.sod,sug:n.sug,fib:n.fib},servingG,servingText:servingG?"1 serving ("+servingG+" g)":null};
+}
+function applyMisplacedFix(basis,fix){
+ fix=fix||detectMisplacedServing(basis);if(!basis||!fix)return basis;
+ const b=JSON.parse(JSON.stringify(basis));
+ b.perServing=Object.assign({},fix.perServing);
+ if(fix.servingG)b.servingG=fix.servingG;
+ if(fix.servingText)b.servingText=fix.servingText;
+ if(b.per100&&b.servingG){
+  const f=100/b.servingG,s=b.perServing;
+  b.per100=Object.assign({},b.per100,{
+   p:s.p==null?b.per100.p:r1(s.p*f),c:s.c==null?b.per100.c:r1(s.c*f),f:s.f==null?b.per100.f:r1(s.f*f),
+   sod:s.sod==null?b.per100.sod:r0(s.sod*f),sug:s.sug==null?b.per100.sug:r1(s.sug*f),fib:s.fib==null?b.per100.fib:r1(s.fib*f)
+  });
+ }
+ return b;
+}
+function overrideKey(map,code){
+ if(!map||!code)return null;
+ const raw=String(code).replace(/\D/g,"");
+ const want=new Set(codeVariants(raw));
+ if(raw.length&&raw.length<13){want.add(raw.padStart(12,"0"));want.add(raw.padStart(13,"0"))}
+ for(const c of want)if(Object.prototype.hasOwnProperty.call(map,c))return c;
+ for(const k of Object.keys(map)){if(codeVariants(k).some(v=>want.has(v)))return k}
+ return null;
+}
+function nutriCopy(n){return n?{cal:n.cal??null,p:n.p??null,c:n.c??null,f:n.f??null,sod:n.sod??null,sug:n.sug??null,fib:n.fib??null}:null}
+function overrideToBasis(ov,offBasis){
+ if(!ov)return offBasis||null;
+ const perServing=nutriCopy(ov.perServing)||nutriCopy(ov);
+ const servingG=num(ov.servingG);
+ let per100=(offBasis&&offBasis.per100)?Object.assign({},offBasis.per100):null;
+ if(servingG&&servingG>0&&perServing){
+  const f=100/servingG;
+  const derived={cal:perServing.cal==null?null:r1(perServing.cal*f),p:perServing.p==null?null:r1(perServing.p*f),c:perServing.c==null?null:r1(perServing.c*f),f:perServing.f==null?null:r1(perServing.f*f),sod:perServing.sod==null?null:r0(perServing.sod*f),sug:perServing.sug==null?null:r1(perServing.sug*f),fib:perServing.fib==null?null:r1(perServing.fib*f)};
+  if(per100&&per100.cal!=null&&derived.cal!=null&&Math.abs(per100.cal-derived.cal)<=Math.max(15,.05*Math.max(derived.cal,1)))derived.cal=per100.cal;
+  per100=derived;
+ }
+ return{per100,perServing,servingG,servingText:ov.servingText||(servingG?servingG+" g":""),servingsPerContainer:(offBasis&&offBasis.servingsPerContainer)||null,unit:ov.unit||(offBasis&&offBasis.unit)||"g",packageG:(offBasis&&offBasis.packageG)||null,packageText:(offBasis&&offBasis.packageText)||""};
+}
+function basisToOverride(basis){
+ if(!basis)return null;
+ let per=basis.perServing;
+ if(!per&&basis.per100&&basis.servingG){
+  const f=basis.servingG/100,n=basis.per100;
+  per={cal:n.cal==null?null:r0(n.cal*f),p:n.p==null?null:r1(n.p*f),c:n.c==null?null:r1(n.c*f),f:n.f==null?null:r1(n.f*f),sod:n.sod==null?null:r0(n.sod*f),sug:n.sug==null?null:r1(n.sug*f),fib:n.fib==null?null:r1(n.fib*f)};
+ }
+ if(!per)return null;
+ return{servingText:basis.servingText||"",servingG:basis.servingG||null,unit:basis.unit||"g",perServing:nutriCopy(per)};
+}
+function basisSnap(b){
+ if(!b)return"";
+ const s=b.perServing||{},p=b.per100||{};
+ return JSON.stringify({st:b.servingText||"",sg:b.servingG,u:b.unit||"",s:nutriCopy(s),p:nutriCopy(p)});
 }
 
 // ---------- Nutrition Facts OCR parser ----------
@@ -567,7 +662,7 @@ function applyEstimates(items,est,skipId){
 function applySuggestion(it){const s=it.suggestion;if(!s)return false;for(const k of MACROS)it[k]=s[k];it.rep_est=true;it.rep_note=s.note||"";it.user_edit_at=null;it.estimate_needed=false;it.est_seen=s.updated_at;delete it.suggestion;return true}
 function dismissSuggestion(it){const s=it.suggestion;if(!s)return false;it.est_seen=s.updated_at;delete it.suggestion;return true}
 const isPending=it=>!!it.estimate_needed&&MACROS.some(k=>it[k]==null);
-return{DEVICE_RE,applyEstimates,applySuggestion,dismissSuggestion,isPending,MEALS,MEAL_LABEL,MEAL_ICON,OFF_URL,OFF_FIELDS,localIso,hhmm,num,r0,r1,defaultMeal,upcEtoA,gtinOk,codeVariants,lookupOFF,offToBasis,canMode,computeMacros,firstNumber,parseLabel,labelToBasis,totals,summaryText,itemLine,itemOut,buildPayload,MACROS};
+return{DEVICE_RE,applyEstimates,applySuggestion,dismissSuggestion,isPending,MEALS,MEAL_LABEL,MEAL_ICON,OFF_URL,OFF_FIELDS,localIso,hhmm,num,r0,r1,defaultMeal,upcEtoA,gtinOk,codeVariants,lookupOFF,offToBasis,canMode,computeMacros,parsePackageG,atwaterKcal,nutritionSanity,SANITY_MSG,detectMisplacedServing,applyMisplacedFix,overrideKey,overrideToBasis,basisToOverride,basisSnap,firstNumber,parseLabel,labelToBasis,totals,summaryText,itemLine,itemOut,buildPayload,MACROS};
 })();
 if(typeof module!=="undefined")module.exports=FeedCore;
 if(typeof window!=="undefined")window.FeedCore=FeedCore;
@@ -582,7 +677,7 @@ const T_SRI="sha384-2BQ3U3OdKOb0Uczxqr41I9UvZkzr4V9Hv8uSzMMZAlmhsFClvdZX5wi5fDCz
 const T_OPTS={workerPath:"https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/worker.min.js",corePath:"https://cdn.jsdelivr.net/npm/tesseract.js-core@7.0.0",langPath:"https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int"};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const LS={days:"feed.v1.days",tgt:"feed.v1.targets",recent:"feed.v1.recent"};
+const LS={days:"feed.v1.days",tgt:"feed.v1.targets",recent:"feed.v1.recent",ov:"feed.v1.overrides",ovseed:"feed.v1.ovseed"};
 const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}};
 const store=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){toast("Phone storage is full")}};
 let days=load(LS.days,{}),targets=load(LS.tgt,{}),recent=load(LS.recent,[]);
@@ -592,6 +687,13 @@ const DEVICE=(()=>{let d=null;try{d=localStorage.getItem("feed_device")}catch(e)
  if(!C.DEVICE_RE.test(d||"")){const b=new Uint8Array(16);crypto.getRandomValues(b);d=Array.from(b,x=>x.toString(16).padStart(2,"0")).join("");try{localStorage.setItem("feed_device",d)}catch(e){}}
  return d})();
 const SRC_ICON={barcode:"▥",label:"📷",describe:"💬",manual:"✍️"};
+const JIF_CODE="051500243213";
+const JIF_SEED={servingText:"2 tbsp (33 g)",servingG:33,unit:"g",perServing:{cal:190,p:7,c:8,f:16,sod:80,sug:4,fib:3},sat_fat:3.5,name:"Peanut Butter Spread",brand:"Jif",seeded:true};
+function allOverrides(){return load(LS.ov,{})}
+function getOverride(code){const map=allOverrides(),k=C.overrideKey(map,code);return k?{key:k,data:map[k]}:null}
+function putOverride(code,data){const map=allOverrides();const k=C.overrideKey(map,code)||String(code||"").replace(/\D/g,"");if(!k)return;map[k]=Object.assign({},data,{at:new Date().toISOString()});store(LS.ov,map)}
+function clearOverride(code){const map=allOverrides();const k=C.overrideKey(map,code);if(k){delete map[k];store(LS.ov,map)}}
+(function seedOverrides(){const seeded=load(LS.ovseed,[]);if(seeded.includes(JIF_CODE))return;if(!getOverride(JIF_CODE))putOverride(JIF_CODE,Object.assign({},JIF_SEED));store(LS.ovseed,seeded.concat([JIF_CODE]))})();
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const today=()=>C.localIso(new Date());
 const dayItems=d=>days[d]||(days[d]=[]);
@@ -688,12 +790,13 @@ function mealChips(boxId,sel,onPick){$(boxId).innerHTML=C.MEALS.map(m=>`<button 
 // opts: {mode:"add"|"edit", item?, source, basis?, thumb?, msg?, notFound?, label?(parsed)}
 function openEditor(o){
  const it=o.item||{};
- ed={mode:o.mode||"add",orig:it,id:it.id||uid(),date:it.date||today(),time:it.time||null,source:o.source||it.source||"manual",basis:o.basis||it.basis||null,amode:it.amode||"serv",qty:it.qty??1,meal:it.meal||curMeal,sent:it.sent,description:it.description||""};
+ ed={mode:o.mode||"add",orig:it,id:it.id||uid(),date:it.date||today(),time:it.time||null,source:o.source||it.source||"manual",basis:o.basis||it.basis||null,amode:it.amode||"serv",qty:it.qty??1,meal:it.meal||curMeal,sent:it.sent,description:it.description||"",offBasis:o.offBasis||null,fromOverride:!!o.fromOverride,usedFix:!!o.usedFix};
  const b=ed.basis;
  if(b&&!C.canMode(b,ed.amode))ed.amode=C.canMode(b,"serv")?"serv":"g";
  if(b&&ed.mode==="add"&&!it.qty&&ed.amode==="g")ed.qty=100;
  $("edtitle").textContent=ed.mode==="edit"?"Edit item":({barcode:"Scanned item",label:"Check the label",describe:"Described meal",manual:"Add food"})[ed.source];
- $("edsub").textContent=ed.mode==="edit"?`Logged ${ed.time||""}. Saving sends Rep the update.`:({barcode:"From Open Food Facts. Fix anything that looks off.",label:"Read from your photo. Fix anything that looks off before saving.",describe:"",manual:"Type what you know. Blank numbers go to Rep to estimate."})[ed.source];
+ $("edsub").textContent=ed.fromOverride?"Using your saved numbers for this barcode.":ed.mode==="edit"?`Logged ${ed.time||""}. Saving sends Rep the update.`:({barcode:"From Open Food Facts. Fix anything that looks off.",label:"Read from your photo. Fix anything that looks off before saving.",describe:"",manual:"Type what you know. Blank numbers go to Rep to estimate."})[ed.source];
+ $("edcustom").classList.toggle("hidden",!ed.fromOverride);
  $("edthumb").classList.toggle("hidden",!o.thumb);if(o.thumb)$("edthumb").src=o.thumb;
  if(!o.msg&&it.rep_est){o.msg="🤖 These numbers are Rep's estimate"+(it.rep_note?" ("+it.rep_note+")":"")+". Change them and your numbers win.";o.msgOk=true}
  $("edmsg").innerHTML=(o.msg?`<div class="${o.msgOk?"okbox":"warnbox"}">${esc(o.msg)}</div>`:"")+((o.label&&o.label.warnings||[]).length?`<div class="warnbox">⚠︎ Double-check ${o.label.warnings.map(esc).join("; ")}</div>`:"");
@@ -719,6 +822,7 @@ function openEditor(o){
  $("edextra").open=!!(o.label&&o.label.ingredients);
  if(hasB&&(ed.mode==="add"||it.calories==null))edRecalc();
  mealChips("edmeals",ed.meal,m=>ed.meal=m);
+ ed.basisSnap=C.basisSnap(ed.basis);
  edCheck();
  show("edsheet");$("edsheet").querySelector(".panel").scrollTop=0;
 }
@@ -733,9 +837,40 @@ function edRecalc(){
  edCheck();
 }
 function edCheck(){const c=C.num($("ecal").value),p=C.num($("epro").value),cb=C.num($("ecarb").value),f=C.num($("efat").value);
- let h="";if(c!=null&&p!=null&&cb!=null&&f!=null&&c>0){const e=9*f+4*cb+4*p;if(Math.abs(e-c)>Math.max(25,.2*c))h=`<div class="warnbox">⚠︎ Fat/carbs/protein add up to ~${Math.round(e)} kcal, not ${c}. Worth a second look.</div>`}
+ const servingG=ed&&ed.basis?ed.basis.servingG:C.num($("bservg")&&$("bservg").value);
+ const pack=ed&&ed.basis?{packageG:ed.basis.packageG,unit:ed.basis.unit}:{};
+ const s=C.nutritionSanity(Object.assign({calories:c,protein_g:p,carbs_g:cb,fat_g:f,servingG},pack));
+ let top="",h="";
+ if(!s.ok){const box=`<div class="warnbox">${esc(s.message)}</div>`;top=box;h=box}
  else if([c,p,cb,f].some(v=>v==null))h=`<div class="warnbox">🤖 Blank numbers: Rep will estimate them.</div>`;
- $("edcheck").innerHTML=h}
+ const fix=ed&&ed.basis&&!ed.fromOverride?C.detectMisplacedServing(ed.basis):null;
+ if(fix)h+=`<button type="button" class="mini" id="edfixserv">Use 1 serving from label</button>`;
+ $("edwarn").innerHTML=top;$("edcheck").innerHTML=h}
+$("edcheck").addEventListener("click",e=>{
+ if(e.target.id!=="edfixserv"||!ed||!ed.basis)return;
+ const fix=C.detectMisplacedServing(ed.basis);if(!fix)return;
+ ed.basis=C.applyMisplacedFix(ed.basis,fix);ed.usedFix=true;ed.fromOverride=false;ed.amode="serv";ed.qty=1;
+ ed.bkey="perServing";if(!ed.basis[ed.bkey])ed.basis[ed.bkey]={cal:null,p:null,c:null,f:null};
+ $("edbtitle").textContent="Per serving";
+ EB.forEach((id,i)=>setv(id,C.r1(ed.basis.perServing[BK[i]])));
+ setv("bserv",ed.basis.servingText);setv("bservg",ed.basis.servingG);setv("qty",1);
+ $("edbinfo").innerHTML=ed.basis.per100?`Per 100 ${ed.basis.unit==="ml"?"mL":"g"}: <b>${fmtK(ed.basis.per100.cal)}</b> kcal · P <b>${fmtG(ed.basis.per100.p)}</b> · C <b>${fmtG(ed.basis.per100.c)}</b> · F <b>${fmtG(ed.basis.per100.f)}</b>`:"";
+ edRecalc();
+});
+$("edovreset").onclick=async()=>{
+ if(!ed)return;
+ const code=$("edcode").value.replace(/\D/g,"");
+ if(code)clearOverride(code);
+ let b=ed.offBasis,name=$("edname").value.trim(),brand=$("edbrand").value.trim();
+ if(!b&&code){
+  toast("Looking up the database…");
+  try{const res=await C.lookupOFF(code);if(res){b=C.offToBasis(res.product);if(!name)name=res.product.product_name||"";if(!brand)brand=(res.product.brands||"").split(",")[0].trim()}}catch(e){}
+ }
+ if(!b){toast("Couldn't load database values");return}
+ const item=Object.assign({},ed.orig||{},{id:ed.id,date:ed.date,time:ed.time,meal:ed.meal,name,brand,barcode:code,qty:1,amode:"serv"});
+ delete item.calories;delete item.protein_g;delete item.carbs_g;delete item.fat_g;
+ openEditor({mode:ed.mode,item,source:"barcode",basis:b,offBasis:b,fromOverride:false,msg:"Reset to Open Food Facts numbers. Check the label — they may be off."});
+};
 EB.concat(["bservg"]).forEach(id=>$(id).addEventListener("input",edRecalc));
 $("bserv").addEventListener("input",()=>{const m=$("bserv").value.match(/\(?\s*([\d.]+)\s*g\s*\)?/i);if(m&&!$("bservg").value){setv("bservg",m[1]);edRecalc()}});
 $("bspc").addEventListener("input",readBasis);
@@ -763,6 +898,9 @@ $("edsave").onclick=()=>{
   ingredients:$("eingr").value.trim().slice(0,1500),serving_size:ed.basis?ed.basis.servingText:"",description:ed.description,
   basis:ed.basis,amode:ed.amode,qty:C.num($("qty").value)};
  it.estimate_needed=TK.some(k=>it[k]==null);
+ if(code&&ed.basis&&(ed.source==="barcode"||getOverride(code))&&(ed.usedFix||C.basisSnap(ed.basis)!==ed.basisSnap)){
+  const ov=C.basisToOverride(ed.basis);if(ov){ov.name=name;ov.brand=it.brand;putOverride(code,ov)}
+ }
  if(ed.mode==="edit"){const o=ed.orig||{};const changed=TK.some(k=>C.r1(C.num(o[k]))!==C.r1(it[k]));
   // his numbers win: if he touched the numbers, drop the Rep flag/suggestion and ignore estimates older than now
   if(changed||!o.rep_est){it.rep_est=false;it.rep_note="";if(!it.estimate_needed){it.user_edit_at=new Date().toISOString();const a=o.est_last||"",b=o.est_seen||"";it.est_seen=a>b?a:b}it.suggestion=undefined}
@@ -933,12 +1071,17 @@ async function scanLoop(){
 }
 async function onCode(code){
  stopScan();status("Found "+code+". Looking it up…");
+ const ov=getOverride(code);
  let res=null,err=null;
  try{res=await C.lookupOFF(code)}catch(e){err=e}
  hide("scan");
- if(res){const p=res.product;const b=C.offToBasis(p);
-  if(!b.perServing&&!b.per100){openEditor({mode:"add",source:"barcode",item:{name:p.product_name||"",brand:(p.brands||"").split(",")[0].trim(),barcode:code},basis:{perServing:null,per100:null,servingG:b.servingG,servingText:b.servingText,unit:b.unit},notFound:true,msg:"Found the product, but Open Food Facts has no nutrition numbers for it. Read the label or type them in."});return}
-  openEditor({mode:"add",source:"barcode",item:{name:p.product_name||"",brand:(p.brands||"").split(",")[0].trim(),barcode:code},basis:b});
+ const p=res&&res.product,offBasis=p?C.offToBasis(p):null;
+ const name=p&&p.product_name||(ov&&ov.data.name)||"";
+ const brand=p?(p.brands||"").split(",")[0].trim():(ov&&ov.data.brand)||"";
+ if(ov){openEditor({mode:"add",source:"barcode",item:{name,brand,barcode:code},basis:C.overrideToBasis(ov.data,offBasis),offBasis,fromOverride:true});return}
+ if(res){
+  if(!offBasis.perServing&&!offBasis.per100){openEditor({mode:"add",source:"barcode",item:{name,brand,barcode:code},basis:{perServing:null,per100:null,servingG:offBasis.servingG,servingText:offBasis.servingText,unit:offBasis.unit,packageG:offBasis.packageG},offBasis,notFound:true,msg:"Found the product, but Open Food Facts has no nutrition numbers for it. Read the label or type them in."});return}
+  openEditor({mode:"add",source:"barcode",item:{name,brand,barcode:code},basis:offBasis,offBasis});
  }else{
   openEditor({mode:"add",source:"manual",item:{barcode:code},notFound:true,msg:err?"Couldn't reach Open Food Facts. Read the label or type the numbers in.":"That barcode isn't in Open Food Facts. Read the label or type the numbers in."});
  }
@@ -1093,7 +1236,7 @@ const CSV_COLS=["date","time","meal","name","brand","amount","grams","calories",
 function foodCsv(){return[CSV_COLS.join(","),...allItems().map(([it,d])=>{const r=histRecord(it,d);return CSV_COLS.map(c=>csvCell(r[c])).join(",")})].join("\r\n")+"\r\n"}
 const stripLocal=o=>{const x={};for(const d of Object.keys(o))x[d]=o[d].map(({bk,...it})=>it);return x};
 $("expjson").onclick=()=>{if(!allItems().length){toast("Nothing logged yet");return}
- saveFile(`feed-history-${today()}.json`,JSON.stringify({app:"Feed",version:1,exported_at:new Date().toISOString(),device:DEVICE,targets,days:stripLocal(days),records:allItems().map(([it,d])=>histRecord(it,d))},null,1),"application/json")};
+ saveFile(`feed-history-${today()}.json`,JSON.stringify({app:"Feed",version:1,exported_at:new Date().toISOString(),device:DEVICE,targets,days:stripLocal(days),records:allItems().map(([it,d])=>histRecord(it,d)),overrides:allOverrides()},null,1),"application/json")};
 $("expcsv").onclick=()=>{if(!allItems().length){toast("Nothing logged yet");return}saveFile(`feed-history-${today()}.csv`,foodCsv(),"text/csv")};
 $("backup").onclick=()=>backupHistory(true);
 
@@ -1261,7 +1404,7 @@ pullEstimates(false);
 // one-time backfill of everything logged before this update, then self-healing: anything not yet backed up goes on the next open
 setTimeout(()=>backupHistory(false),2500);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")bkSoon()});
-window.Feed={backupHistory,foodCsv,DEVICE,pullEstimates,get days(){return days},get recent(){return recent},get curMeal(){return curMeal},get manMeal(){return manMeal},openEditor,sendItems,addRecentItems,openRecentSheet,parseLabel:C.parseLabel,preprocess,ocrLabel,threshold,onCode,render};
+window.Feed={backupHistory,foodCsv,DEVICE,pullEstimates,get days(){return days},get recent(){return recent},get curMeal(){return curMeal},get manMeal(){return manMeal},openEditor,sendItems,addRecentItems,openRecentSheet,parseLabel:C.parseLabel,preprocess,ocrLabel,threshold,onCode,render,getOverride,clearOverride,putOverride,allOverrides,JIF_CODE};
 
 </script>
 </body>

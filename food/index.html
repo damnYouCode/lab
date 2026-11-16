@@ -163,6 +163,18 @@ summary{color:var(--dim);font-size:13px;font-weight:800}
 .rrow .am{color:var(--dim);font-size:12px;margin-top:2px}
 .star{flex:none;width:36px;height:36px;border-radius:50%;border:1px solid #2f2f47;background:var(--card2);color:var(--dim);font-size:16px;padding:0}
 .star.on{color:var(--b);border-color:rgba(255,176,32,.5)}
+
+.manbar{position:sticky;bottom:0;z-index:2;display:none;gap:8px;align-items:center;padding:12px 0 8px;background:linear-gradient(transparent,var(--card) 14px,var(--card));margin-top:4px}
+.manbar.show{display:flex}
+.manbar .ghost{flex:none;width:auto;margin:0;padding:13px 16px}
+.manbar .big{flex:1;margin:0}
+#manmeals{margin:12px 0 4px}
+#mannote{margin:0 4px 10px}
+.rrow.on{background:rgba(255,176,32,.08);border-radius:12px;margin:0 -6px;padding:9px 6px;border-top-color:transparent}
+.rrow.on + .rrow.on{margin-top:2px}
+.check{flex:none;width:24px;height:24px;border-radius:50%;border:2px solid #3a3a52;background:transparent;color:transparent;font-size:13px;font-weight:900;padding:0;display:flex;align-items:center;justify-content:center;line-height:1}
+.rrow.on .check{background:var(--b);border-color:var(--b);color:#0b0b12}
+.radd{flex:none;width:36px;height:36px;border-radius:50%;border:1px solid #2f2f47;background:var(--card2);color:var(--b);font-size:22px;font-weight:800;padding:0;line-height:1}
 .week{background:var(--card);border:1px solid #24243a;border-radius:20px;padding:14px;margin-bottom:12px}
 .week h3{margin:0 0 2px;font-size:15px;font-weight:900}
 .week .sub{margin-bottom:10px}
@@ -276,10 +288,17 @@ summary{color:var(--dim);font-size:13px;font-weight:800}
 
 <!-- recent / manual -->
 <div class="sheet" id="mansheet"><div class="panel">
-  <h2>Recent &amp; favorites</h2><div class="sub">Tap to add again. ⭐ keeps it at the top.</div>
+  <h2>Recent &amp; favorites</h2>
+  <div class="sub">Tap to select. + lets you change the amount first. ⭐ keeps it at the top.</div>
+  <div class="meals" id="manmeals" role="radiogroup" aria-label="Meal"></div>
+  <div class="note" id="mannote"></div>
   <button class="big" id="mannew">✍️ Enter manually</button>
   <input class="tin search" id="mansearch" placeholder="Search" autocomplete="off">
   <div id="manlist"></div>
+  <div class="manbar" id="manbar">
+    <button class="ghost" id="manclear" type="button">Clear</button>
+    <button class="big" id="manadd" type="button">Add items</button>
+  </div>
   <button class="ghost" id="mancancel">Close</button>
 </div></div>
 
@@ -567,7 +586,7 @@ const LS={days:"feed.v1.days",tgt:"feed.v1.targets",recent:"feed.v1.recent"};
 const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}};
 const store=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){toast("Phone storage is full")}};
 let days=load(LS.days,{}),targets=load(LS.tgt,{}),recent=load(LS.recent,[]);
-let curMeal=C.defaultMeal(new Date()),view="today",openDay=null;
+let curMeal=C.defaultMeal(new Date()),view="today",openDay=null,manMeal=curMeal,manSel=new Set();
 // random 128-bit device token so Rep's estimates can find their way back to this phone
 const DEVICE=(()=>{let d=null;try{d=localStorage.getItem("feed_device")}catch(e){}
  if(!C.DEVICE_RE.test(d||"")){const b=new Uint8Array(16);crypto.getRandomValues(b);d=Array.from(b,x=>x.toString(16).padStart(2,"0")).join("");try{localStorage.setItem("feed_device",d)}catch(e){}}
@@ -606,6 +625,11 @@ async function sendItems(action,meal,items,date){
 }
 
 // ---------- render ----------
+function mealTrackHTML(sel){
+ return `<div class="meal-thumb" aria-hidden="true"></div>`+C.MEALS.map(m=>`<button class="pill${m===sel?" on":""}" data-meal="${m}" type="button"><span class="ico" aria-hidden="true"></span><span>${C.MEAL_LABEL[m]}</span></button>`).join("");
+}
+function mealNoteText(m,kind){return kind==="man"?`Adds go to ${C.MEAL_LABEL[m]}.`:`New items go to ${C.MEAL_LABEL[m]}. Each one is sent to Rep when you save it.`}
+
 function render(){
  const d=today(),items=dayItems(d),T=C.totals(items);
  $("dateline").textContent=new Date().toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"});
@@ -615,7 +639,7 @@ function render(){
  const pt=C.num(targets.pro),pf=pt?Math.min(1,T.protein_g/pt):0;
  $("prog").style.strokeDashoffset=String(182.2*(1-pf));
  $("protv").textContent=fmtG(T.protein_g)+"g";$("prott").textContent=pt?"of "+pt+"g":"PROTEIN";
- $("meals").innerHTML=`<div class="meal-thumb" aria-hidden="true"></div>`+C.MEALS.map(m=>`<button class="pill${m===curMeal?" on":""}" data-meal="${m}" type="button"><span class="ico" aria-hidden="true"></span><span>${C.MEAL_LABEL[m]}</span></button>`).join("");
+ $("meals").innerHTML=mealTrackHTML(curMeal);
  $("mealnote").textContent=`New items go to ${C.MEAL_LABEL[curMeal]}. Each one is sent to Rep when you save it.`;
  const groups=C.MEALS.map(m=>[m,items.filter(i=>i.meal===m)]).filter(g=>g[1].length);
  const sugg=items.filter(i=>i.suggestion);
@@ -763,17 +787,83 @@ function remember(it,fav){
  const favs=recent.filter(x=>x.fav),rest=recent.filter(x=>!x.fav).slice(0,50);
  recent=recent.filter(x=>favs.includes(x)||rest.includes(x));store(LS.recent,recent);
 }
+function itemFromRecent(r,meal){
+ const it=JSON.parse(JSON.stringify(r));
+ delete it.key;delete it.fav;delete it.t;delete it.bk;delete it.sent;delete it.suggestion;delete it.user_edit_at;delete it.est_last;delete it.est_seen;delete it.rep_est;delete it.rep_note;
+ it.id=uid();it.date=today();it.time=C.hhmm(new Date());it.meal=meal;
+ it.estimate_needed=TK.some(k=>it[k]==null);
+ return it;
+}
+function openRecentEditor(key){
+ const r=recent.find(x=>x.key===key);if(!r)return;
+ hide("mansheet");
+ const copy=JSON.parse(JSON.stringify(r));delete copy.key;delete copy.fav;delete copy.t;copy.meal=manMeal;
+ openEditor({mode:"add",item:copy,source:copy.source,basis:copy.basis||null,msg:"Same as last time. Change the amount if needed.",msgOk:true});
+}
+function updateManBar(){
+ const n=manSel.size,bar=$("manbar"),btn=$("manadd");
+ if(!bar)return;
+ bar.classList.toggle("show",n>0);
+ if(btn)btn.textContent=n===1?"Add 1 item":"Add "+n+" items";
+}
 function renderRecent(){const q=$("mansearch").value.trim().toLowerCase();
  const list=recent.filter(r=>!q||(r.name+" "+(r.brand||"")).toLowerCase().includes(q)).sort((a,b)=>(b.fav-a.fav)||(b.t-a.t));
- $("manlist").innerHTML=list.length?list.map(r=>`<div class="rrow"><button class="rb" data-key="${esc(r.key)}"><div class="nm">${SRC_ICON[r.source]||""} ${esc(r.name)}</div><div class="am">${esc([r.amount,r.brand].filter(Boolean).join(" · "))} · ${r.calories==null?"Rep estimates":fmtK(r.calories)+" kcal · P "+fmtG(r.protein_g)}</div></button><button class="star${r.fav?" on":""}" data-star="${esc(r.key)}">${r.fav?"★":"☆"}</button></div>`).join(""):`<div class="sub" style="padding:14px 0">Things you log show up here.</div>`}
-$("aMan").onclick=()=>{$("mansearch").value="";renderRecent();show("mansheet")};
+ $("manlist").innerHTML=list.length?list.map(r=>{const on=manSel.has(r.key);
+  return`<div class="rrow${on?" on":""}" data-row="${esc(r.key)}"><button class="check" data-key="${esc(r.key)}" type="button" aria-pressed="${on}" aria-label="Select ${esc(r.name)}">${on?"✓":""}</button><button class="rb" data-key="${esc(r.key)}" type="button"><div class="nm">${SRC_ICON[r.source]||""} ${esc(r.name)}</div><div class="am">${esc([r.amount,r.brand].filter(Boolean).join(" · "))} · ${r.calories==null?"Rep estimates":fmtK(r.calories)+" kcal · P "+fmtG(r.protein_g)}</div></button><button class="radd" data-edit="${esc(r.key)}" type="button" aria-label="Adjust and add ${esc(r.name)}">+</button><button class="star${r.fav?" on":""}" data-star="${esc(r.key)}" type="button" aria-label="Favorite">${r.fav?"★":"☆"}</button></div>`}).join(""):`<div class="sub" style="padding:14px 0">Things you log show up here.</div>`;
+ updateManBar();
+}
+function addRecentItems(){
+ const meal=manMeal,date=today(),keys=[...manSel];
+ const items=[];
+ for(const k of keys){const r=recent.find(x=>x.key===k);if(r)items.push(itemFromRecent(r,meal))}
+ if(!items.length)return;
+ const list=dayItems(date);
+ for(const it of items)list.push(it);
+ list.sort((a,b)=>(a.time||"").localeCompare(b.time||""));
+ saveDays();
+ for(const it of items)remember(it);
+ curMeal=meal;manSel.clear();
+ hide("mansheet");render();
+ sendItems("add",meal,items,date).then(bkSoon);
+}
+function openRecentSheet(){
+ $("mansearch").value="";
+ manSel.clear();
+ manMeal=C.defaultMeal(new Date());
+ if($("manmeals")&&!$("manmeals").querySelector(".meal-thumb"))$("manmeals").innerHTML=mealTrackHTML(manMeal);
+ const note=$("mannote");if(note)note.textContent=mealNoteText(manMeal,"man");
+ renderRecent();show("mansheet");
+ if(window.syncManMeal){syncManMeal(false);requestAnimationFrame(()=>syncManMeal(false))}
+}
+$("aMan").onclick=openRecentSheet;
 $("mansearch").oninput=renderRecent;
-$("mancancel").onclick=()=>hide("mansheet");
+$("mancancel").onclick=()=>{manSel.clear();hide("mansheet")};
 $("mannew").onclick=()=>{hide("mansheet");openEditor({mode:"add",source:"manual"})};
-$("manlist").onclick=e=>{const s=e.target.closest("[data-star]");if(s){const r=recent.find(x=>x.key===s.dataset.star);if(r){r.fav=!r.fav;store(LS.recent,recent);renderRecent()}return}
- const b=e.target.closest("[data-key]");if(!b)return;const r=recent.find(x=>x.key===b.dataset.key);if(!r)return;hide("mansheet");
- const copy=JSON.parse(JSON.stringify(r));delete copy.key;delete copy.fav;delete copy.t;copy.meal=curMeal;
- openEditor({mode:"add",item:copy,source:copy.source,basis:copy.basis||null,msg:"Same as last time. Change the amount if needed.",msgOk:true})};
+$("manclear").onclick=()=>{manSel.clear();renderRecent()};
+$("manadd").onclick=addRecentItems;
+let manHold=null,manHeld=false;
+$("manlist").addEventListener("pointerdown",e=>{
+ if(e.target.closest("[data-star],[data-edit]"))return;
+ const row=e.target.closest("[data-row]");if(!row)return;
+ const key=row.dataset.row,x0=e.clientX,y0=e.clientY;
+ manHeld=false;
+ manHold={key,tid:setTimeout(()=>{manHold=null;manHeld=true;openRecentEditor(key)},550),x0,y0};
+});
+["pointermove","pointerup","pointercancel","pointerleave"].forEach(typ=>$("manlist").addEventListener(typ,e=>{
+ if(!manHold)return;
+ if(typ==="pointermove"&&Math.hypot((e.clientX||0)-manHold.x0,(e.clientY||0)-manHold.y0)<8)return;
+ if(manHold.tid)clearTimeout(manHold.tid);
+ if(typ!=="pointermove")manHold=null;
+}));
+$("manlist").onclick=e=>{
+ if(manHeld){e.preventDefault();e.stopPropagation();manHeld=false;return}
+ const s=e.target.closest("[data-star]");if(s){const r=recent.find(x=>x.key===s.dataset.star);if(r){r.fav=!r.fav;store(LS.recent,recent);renderRecent()}return}
+ const ed=e.target.closest("[data-edit]");if(ed){openRecentEditor(ed.dataset.edit);return}
+ const b=e.target.closest("[data-key]");if(!b)return;
+ const k=b.dataset.key;if(!recent.some(x=>x.key===k))return;
+ if(manSel.has(k))manSel.delete(k);else manSel.add(k);
+ renderRecent();
+};
 
 // ---------- describe ----------
 const DN=["dcal","dpro","dcarb","dfat"];let dMeal=curMeal;
@@ -1008,11 +1098,11 @@ $("expcsv").onclick=()=>{if(!allItems().length){toast("Nothing logged yet");retu
 $("backup").onclick=()=>backupHistory(true);
 
 // Draggable gold meal thumb (time-of-day default is curMeal = C.defaultMeal(...))
-function setupMealSlider(){
-  const track=$("meals");
+function attachMealSlider(track, opts){
   if(!track||track.dataset.sliderBound)return;
   track.dataset.sliderBound="1";
-  const EASE="transform .28s cubic-bezier(.22,.8,.25,1)";
+  const get=opts.get,set=opts.set,EASE="transform .28s cubic-bezier(.22,.8,.25,1)";
+  if(!track.querySelector(".meal-thumb"))track.innerHTML=mealTrackHTML(get());
   function metrics(){
     const r=track.getBoundingClientRect();
     const pad=parseFloat(getComputedStyle(track).paddingLeft)||3;
@@ -1041,27 +1131,28 @@ function setupMealSlider(){
       p.setAttribute("role","radio");
     });
   }
-  window.syncMealThumb=function(animate){
+  function sync(animate){
     const {w}=metrics();
-    const i=idxOf(curMeal);
+    const i=idxOf(get());
     setThumbX(i*w,!!animate);
     highlight(i);
-  };
+  }
   function commit(i,animate){
     i=Math.max(0,Math.min(3,i));
-    curMeal=C.MEALS[i];
+    const m=C.MEALS[i];
+    set(m);
     highlight(i);
     const {w}=metrics();
     setThumbX(i*w,animate);
-    const note=$("mealnote");
-    if(note) note.textContent=`New items go to ${C.MEAL_LABEL[curMeal]}. Each one is sent to Rep when you save it.`;
+    if(opts.note){const note=$(opts.note);if(note)note.textContent=(opts.noteText||(x=>mealNoteText(x)))(m)}
+    if(opts.onCommit)opts.onCommit(m);
   }
   let dragging=false,startX=0,startThumbX=0,pid=null,didDrag=false,startPill=null;
   track.addEventListener("pointerdown",e=>{
     if(e.button!=null&&e.button!==0)return;
     const {w}=metrics();
     startX=e.clientX;
-    startThumbX=idxOf(curMeal)*w;
+    startThumbX=idxOf(get())*w;
     startPill=e.target&&e.target.closest?e.target.closest("[data-meal]"):null;
     dragging=false;
     didDrag=false;
@@ -1108,7 +1199,7 @@ function setupMealSlider(){
     if(!e.changedTouches||!e.changedTouches[0])return;
     const t=e.changedTouches[0];
     const {w}=metrics();
-    tStart={x:t.clientX,y:t.clientY,thumb:idxOf(curMeal)*w,drag:false,pill:e.target&&e.target.closest?e.target.closest("[data-meal]"):null};
+    tStart={x:t.clientX,y:t.clientY,thumb:idxOf(get())*w,drag:false,pill:e.target&&e.target.closest?e.target.closest("[data-meal]"):null};
   },{passive:true});
   track.addEventListener("touchmove",e=>{
     if(!tStart||!e.changedTouches||!e.changedTouches[0])return;
@@ -1144,9 +1235,24 @@ function setupMealSlider(){
     track.classList.remove("dragging");
     dragging=false;
     tStart=null;
-    syncMealThumb(true);
+    sync(true);
   });
-  window.addEventListener("resize",()=>syncMealThumb(false));
+  window.addEventListener("resize",()=>sync(false));
+  return sync;
+}
+function setupMealSlider(){
+  window.syncMealThumb=attachMealSlider($("meals"),{
+    get:()=>curMeal,
+    set:m=>{curMeal=m},
+    note:"mealnote",
+    noteText:m=>mealNoteText(m)
+  })||window.syncMealThumb;
+  window.syncManMeal=attachMealSlider($("manmeals"),{
+    get:()=>manMeal,
+    set:m=>{manMeal=m},
+    note:"mannote",
+    noteText:m=>mealNoteText(m,"man")
+  })||window.syncManMeal;
 }
 
 setupMealSlider();
@@ -1155,7 +1261,7 @@ pullEstimates(false);
 // one-time backfill of everything logged before this update, then self-healing: anything not yet backed up goes on the next open
 setTimeout(()=>backupHistory(false),2500);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")bkSoon()});
-window.Feed={backupHistory,foodCsv,DEVICE,pullEstimates,get days(){return days},get recent(){return recent},openEditor,sendItems,parseLabel:C.parseLabel,preprocess,ocrLabel,threshold,onCode,render};
+window.Feed={backupHistory,foodCsv,DEVICE,pullEstimates,get days(){return days},get recent(){return recent},get curMeal(){return curMeal},get manMeal(){return manMeal},openEditor,sendItems,addRecentItems,openRecentSheet,parseLabel:C.parseLabel,preprocess,ocrLabel,threshold,onCode,render};
 
 </script>
 </body>

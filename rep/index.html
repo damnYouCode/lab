@@ -153,7 +153,7 @@ const PLAN={
 //ANIMJS
 // ---- exercise demos: pose table -> SVG (side view, figure faces right) ----
 const LEN={t:28,n:4,h:7.5,r:6,ua:16,fa:15,th:22,sh:21,ft:8};
-const R2=v=>Math.round(v*10)/10, D2R=Math.PI/180;
+const R2=v=>Math.round(v*10)/10, R3=v=>Math.round(v*1000)/1000, D2R=Math.PI/180;
 const add=(a,b,k=1)=>[a[0]+b[0]*k,a[1]+b[1]*k];
 function ik(R,T,l1,l2,s){
   let dx=T[0]-R[0],dy=T[1]-R[1],d=Math.hypot(dx,dy)||.01;const ux=dx/d,uy=dy/d;
@@ -161,7 +161,8 @@ function ik(R,T,l1,l2,s){
   const a=(l1*l1-l2*l2+d*d)/(2*d),h=Math.sqrt(Math.max(0,l1*l1-a*a));
   return [[R[0]+a*ux+s*h*uy,R[1]+a*uy-s*h*ux],[R[0]+d*ux,R[1]+d*uy]];
 }
-// pose: {P|S:[x,y], tor:deg from vertical (+ = lean toward +x), hd, legs:[{a|t, fa, k, f}], arms:[{w, e, f}]}
+// pose: {P|S:[x,y], tor:deg from vertical (+ = lean toward +x), hd, legs:[{a|t, fa, k, f}], arms:[{w, e, f} | {ua, fa, f}]}
+// 2 poses = start/end; 3+ poses = keyframes along the way (smooth arcs), played up then back down
 function side(p,s){
   const L={};for(const k in LEN)L[k]=LEN[k]*s;
   const th=p.tor*D2R,up=[Math.sin(th),-Math.cos(th)],fw=[Math.cos(th),Math.sin(th)];
@@ -176,8 +177,11 @@ function side(p,s){
     j["k"+i]=K;j["a"+i]=A;j["t"+i]=Tt;want.push([A0,A,"leg"+i]);
     segs["leg"+i]={pts:[P,K,A,Tt],f:g.f,len:[L.th,L.sh,L.ft]};
   });
+  const dir=a=>{a*=D2R;return [Math.sin(a)*fw[0]-Math.cos(a)*up[0],Math.sin(a)*fw[1]-Math.cos(a)*up[1]]};
   (p.arms||[]).forEach((m,i)=>{
-    const W0=T(m.w),[E,W]=ik(S,W0,L.ua,L.fa,m.e==null?-1:m.e);
+    let E,W,W0;
+    if(m.ua!=null){E=add(S,dir(m.ua),L.ua);W=W0=add(E,dir(m.fa==null?m.ua:m.fa),L.fa)} // fixed segment lengths: elbow stays put, hand travels on an arc
+    else{W0=T(m.w);[E,W]=ik(S,W0,L.ua,L.fa,m.e==null?-1:m.e)}
     j["e"+i]=E;j["w"+i]=W;want.push([W0,W,"arm"+i]);
     segs["arm"+i]={pts:[S,E,W],f:m.f,len:[L.ua,L.fa]};
   });
@@ -300,12 +304,23 @@ const DEMO={
 //EXTRAANIM
 // ---- extra-exercise demos (quick-pick list) ----
 const CABLE_R='<rect class="eqf" x="87" y="16" width="9" height="86" rx="1.5"/><line class="eq" x1="76" y1="8" x2="96" y2="8"/>';
-const curl=v=>({env:FLOOR,items:[{type:"db",at:"w0",v}],poses:[
-  {P:[48,58],tor:0,legs:[{a:[50,100]}],arms:[{w:j=>add(add(j.S,j.up,-30),j.fw,4)}]},
-  {P:[48,58],tor:0,legs:[{a:[50,100]}],arms:[{w:j=>add(add(j.S,j.up,-5),j.fw,11),e:1}]}]});
+// a dumbbell seen from the side, as a bar through the hand. along=1: lies along the forearm line; along=0: across it
+const dbBar=(e,w,len,wd,along,off)=>{const dx=w[0]-e[0],dy=w[1]-e[1],m=Math.hypot(dx,dy)||1,u=[dx/m,dy/m],n=[-u[1],u[0]];
+  const a=along?u:n,b=along?n:u,c=add(w,u,off||0),p=add(c,a,len/2),q=add(c,a,-len/2);
+  return [add(p,b,wd/2),add(p,b,-wd/2),add(q,b,-wd/2),add(q,b,wd/2),add(p,b,wd/2)]};
+// standing curl: upper arm pinned at the side, forearm sweeps from hanging to up by the shoulder
+// palms-up (biceps): the dumbbell points across the body, so from the side you see its end (a disc)
+// hammer (neutral grip): the dumbbell points front-to-back, so from the side you see its length, crosswise to the forearm
+const CURL_A=[0,30,62,95,122,140];
+const curl=hammer=>({env:FLOOR,items:[hammer?{type:"poly",cls:"dbf",at:j=>dbBar(j.e0,j.w0,12,5,0,1.2)}:{type:"ball",at:j=>add(j.w0,add(j.w0,j.e0,-1),1.5/LEN.fa),r:4,c:"dbf"}],
+  poses:CURL_A.map(a=>({P:[47,58],tor:0,legs:[{a:[49,100]}],arms:[{ua:-4,fa:a}]}))});
+const BENCH_PO='<rect class="eqf" x="33" y="73.5" width="56" height="5" rx="2"/><line class="eq" x1="42" y1="78.5" x2="42" y2="102"/><line class="eq" x1="80" y1="78.5" x2="80" y2="102"/>';
 Object.assign(DEMO,{
  "Bicep Curls":curl(0),
  "Hammer Curls":curl(1),
+ // lying face-up on a bench, one dumbbell in both hands over the chest, arms nearly straight, lowered in an arc behind the head and back
+ "Dumbbell Pullover":{s:.85,env:FLOOR+BENCH_PO,dur:3,items:[{type:"poly",cls:"dbf",at:j=>dbBar(j.e0,j.w0,12,5.5,1,5)}],
+   poses:[[84,98],[104,118],[124,138],[146,160],[166,180],[182,196]].map(([u,f])=>({P:[71,70.5],tor:-90,legs:[{a:[90,100],k:1}],arms:[{ua:u,fa:f}]}))},
  "Triceps Pushdown":{env:FLOOR+CABLE_R+'<circle class="eq" cx="82" cy="12" r="2.5"/>',items:[{type:"cable",from:[82,14.5],at:"w0"},{type:"ball",at:"w0",r:2.6}],poses:[
    {P:[46,58],tor:8,legs:[{a:[50,100]}],arms:[{w:j=>add(add(j.S,j.up,-8.5),j.fw,13),e:-1}]},
    {P:[46,58],tor:8,legs:[{a:[50,100]}],arms:[{w:j=>add(add(j.S,j.up,-30.3),j.fw,3.5),e:1}]}]},
@@ -342,7 +357,7 @@ Object.assign(DEMO,{
    {P:[49,59.6],tor:2,legs:[{a:[59,100],f:1},{a:[39,100]}],arms:[{w:hangF}]}]}
 });
 const DEMO_ALIAS=[
- [/(leg|hamstring|lying|seated) ?curl|ham curl/,"Leg Curl"],[/hammer/,"Hammer Curls"],[/curl/,"Bicep Curls"],
+ [/pull ?over/,"Dumbbell Pullover"],[/(leg|hamstring|lying|seated) ?curl|ham curl/,"Leg Curl"],[/hammer/,"Hammer Curls"],[/curl|bicep/,"Bicep Curls"],
  [/calf|calves/,"Calf Raises"],[/skull|french press|lying tricep/,"Skull Crushers"],
  [/push ?down|press ?down|tricep/,"Triceps Pushdown"],[/face ?pull/,"Face Pulls"],
  [/leg ?ext|quad ext/,"Leg Extension"],[/fly|flye|crossover|pec ?deck/,"Cable Fly"],[/shrug/,"Shrugs"],
@@ -354,7 +369,7 @@ const DEMO_ALIAS=[
  [/chin/,"Chin-ups"],[/pull ?up/,"Pull-ups"],[/dip/,"Dips"],[/lateral|side raise/,"DB Lateral Raise"],
  [/overhead|ohp|shoulder press|military/,"Overhead Press"],[/push ?up/,"Push-ups"],[/plank/,"BOSU Plank"],
  [/crunch/,"Cable Crunch / Plank"],[/leg raise|knee raise/,"Hanging Leg Raise"]];
-function demoFor(name){if(DEMO[name])return DEMO[name];const n=String(name||"").toLowerCase().replace(/[-_]/g," ");
+function demoFor(name){if(DEMO[name])return DEMO[name];const n=String(name||"").toLowerCase().replace(/[-_]/g," ").replace(/\s+/g," ").trim();
   for(const [re,k] of DEMO_ALIAS)if(re.test(n))return DEMO[k];return DEMO._generic}
 //END EXTRAANIM
 function buildPoses(name){
@@ -364,9 +379,10 @@ function buildPoses(name){
 }
 function demoSVG(name){
   const {d,b}=buildPoses(name),dur=(d.dur||2.4)+"s";
-  const kt=d.breath?'keyTimes="0;0.5;1" keySplines=".45 0 .55 1;.45 0 .55 1"':'keyTimes="0;0.08;0.46;0.58;1" keySplines="0 0 1 1;.42 0 .58 1;0 0 1 1;.42 0 .58 1"';
-  const seq=a=>d.breath?[a[0],a[1],a[0]]:[a[0],a[0],a[1],a[1],a[0]];
-  const an=(attr,vals)=>{const v=seq(vals);return v.every(x=>x===v[0])?"":`<animate attributeName="${attr}" values="${v.join(";")}" ${kt} calcMode="spline" dur="${dur}" repeatCount="indefinite"/>`};
+  const nk=b.length,multi=nk>2&&!d.breath,ez=i=>(1-Math.cos(Math.PI*i/(nk-1)))/2;
+  const kt=multi?`keyTimes="0;${[...b.map((_,i)=>R3(.08+.38*ez(i))),...b.map((_,i)=>R3(.58+.42*ez(i)))].join(";")}"`:d.breath?'keyTimes="0;0.5;1" keySplines=".45 0 .55 1;.45 0 .55 1"':'keyTimes="0;0.08;0.46;0.58;1" keySplines="0 0 1 1;.42 0 .58 1;0 0 1 1;.42 0 .58 1"';
+  const seq=a=>multi?[a[0],...a,...a.slice().reverse()]:d.breath?[a[0],a[1],a[0]]:[a[0],a[0],a[1],a[1],a[0]];
+  const an=(attr,vals)=>{const v=seq(vals);return v.every(x=>x===v[0])?"":`<animate attributeName="${attr}" values="${v.join(";")}" ${kt} calcMode="${multi?"linear":"spline"}" dur="${dur}" repeatCount="indefinite"/>`};
   const pts=a=>a.map(p=>R2(p[0])+","+R2(p[1])).join(" ");
   const poly=(cls,arr)=>`<polyline class="${cls}" points="${arr[0]}">${an("points",arr)}</polyline>`;
   const circ=(cls,c,r)=>`<circle class="${cls}" cx="${R2(c[0][0])}" cy="${R2(c[0][1])}" r="${r}">${an("cx",c.map(p=>R2(p[0])))}${an("cy",c.map(p=>R2(p[1])))}</circle>`;
@@ -410,7 +426,7 @@ document.getElementById("dateline").textContent=new Date().toLocaleDateString(un
 function save(){SS("rep_state",st)}
 // ---- extras: pinned per where+day (rep_extras), today-only until Finish (rep_extras_today)
 let extras=LS("rep_extras")||{}, xtoday=LS("rep_extras_today")||{};
-const QUICK=["Bicep Curls","Hammer Curls","Triceps Pushdown","Skull Crushers","Calf Raises","Face Pulls","Leg Curl","Leg Extension","Cable Fly","Shrugs","Ab Wheel","Russian Twist","Farmer Carry"];
+const QUICK=["Bicep Curls","Hammer Curls","Dumbbell Pullover","Triceps Pushdown","Skull Crushers","Calf Raises","Face Pulls","Leg Curl","Leg Extension","Cable Fly","Shrugs","Ab Wheel","Russian Twist","Farmer Carry"];
 const MAXEX=30;
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const schemeTxt=r=>/[a-z]/i.test(r||"")?r:`${r} reps`;

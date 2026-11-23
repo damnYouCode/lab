@@ -37,6 +37,7 @@ h1{font-size:30px;font-weight:900;margin:0;letter-spacing:-.5px;background:linea
 .wt{display:flex;align-items:center;gap:6px}
 .wt input{width:72px;padding:9px 8px;border-radius:12px;border:1px solid #2f2f47;background:var(--card2);color:var(--text);font-size:17px;font-weight:800;text-align:center}
 .wt small{color:var(--dim);font-size:12px}
+.bwtag{padding:8px 10px;border-radius:12px;border:1px solid #2f2f47;color:var(--dim);font-size:12px;font-weight:800;white-space:nowrap}
 .sets{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
 .set{width:54px;height:54px;border-radius:50%;border:2px solid #34344d;background:var(--card2);color:var(--dim);font-weight:800;font-size:17px;display:flex;align-items:center;justify-content:center;position:relative;transition:transform .15s}
 .set:active{transform:scale(.9)}
@@ -370,7 +371,7 @@ const DEMO_ALIAS=[
  [/leg ?press/,"Leg Press"],[/incline/,"Incline DB Press"],[/floor ?press/,"DB Floor Press"],[/bench/,"Bench Press"],
  [/pull ?down/,"Lat Pulldown"],[/one.?arm|single.?arm|db row|dumbbell row/,"One-Arm DB Row"],[/row/,"Barbell Row"],
  [/rdl|romanian|stiff/,"Romanian Deadlift"],[/deadlift/,"Deadlift"],[/lunge/,"Walking Lunges"],
- [/chin/,"Chin-ups"],[/pull ?up/,"Pull-ups"],[/dip/,"Dips"],[/lateral|side raise/,"DB Lateral Raise"],
+ [/\bchin/,"Chin-ups"],[/pull ?up/,"Pull-ups"],[/dip/,"Dips"],[/lateral|side raise/,"DB Lateral Raise"],
  [/overhead|ohp|shoulder press|military/,"Overhead Press"],[/push ?up/,"Push-ups"],[/plank/,"BOSU Plank"],
  [/crunch/,"Cable Crunch / Plank"],[/leg raise|knee raise/,"Hanging Leg Raise"]];
 function demoFor(name){if(DEMO[name])return DEMO[name];const n=String(name||"").toLowerCase().replace(/[-_]/g," ").replace(/\s+/g," ").trim();
@@ -389,7 +390,7 @@ function frontX(p,s){
   segs.pel={pts:[[Hc[0]-5,Hc[1]],[Hc[0]+5,Hc[1]]],len:[10]};
   [-1,1].forEach((sg,i)=>{
     // arms reach toward the viewer here, so they are drawn foreshortened: straight, elbow halfway, a slight natural bend
-    const W=add(p.hands,[sg*1.6,0]),v=[W[0]-Sh[i][0],W[1]-Sh[i][1]],vl=Math.hypot(...v)||1,E=add(add(Sh[i],v,.5),[-v[1]/vl,v[0]/vl],(p.eb||1.2)*-sg);
+    const gv=p.grip?[Math.cos(p.ga*D2R)*p.grip,Math.sin(p.ga*D2R)*p.grip]:[1.6,0],W=add(p.hands,gv,sg),v=[W[0]-Sh[i][0],W[1]-Sh[i][1]],vl=Math.hypot(...v)||1,E=add(add(Sh[i],v,.5),[-v[1]/vl,v[0]/vl],(p.eb||1.2)*-sg);
     j["w"+i]=W;j["e"+i]=E;segs["arm"+i]={pts:[Sh[i],E,W],len:[L.ua,L.fa]};
     const Hp=[Hc[0]+5*sg,Hc[1]],A=[50+11*sg,100],[K]=ik(Hp,A,L.th,L.sh,sg>0?1:-1);
     segs["leg"+i]={pts:[Hp,K,A,[A[0]+6*sg,100.5]],len:[L.th,L.sh,6]};
@@ -461,6 +462,30 @@ DEMO_ALIAS.unshift(
  [/rower|rowing|\berg\b|concept ?2/,"Bike or Rower Intervals"],[/\bbike\b|cycling|peloton|nordic ?track|air ?dyne|interval/,"Bike Intervals"],
  [/mountain ?climb/,"BOSU Mountain Climbers"],[/dead ?bug/,"Dead Bug"],[/suitcase|(one|single).?(arm|hand|side)d? ?(db |dumbbell |kb |kettlebell )?carry/,"DB Suitcase Carry"],
  [/wood ?chop|cable chop|\bchops?\b/,"Cable Woodchop"],[/pallof|anti.?rotation/,"Pallof Press"],[/roll ?out/,"Ab Wheel Rollout"]);
+// ---- machine chest press + front raises ----
+// seated chest press: upright pad, handles on a lever that swings from a pivot above and behind the hands
+const CP_ENV=FLOOR+'<rect class="eqf" x="27" y="40" width="5" height="44" rx="2"/><rect class="eqf" x="29" y="80.5" width="24" height="4.5" rx="2"/><line class="eq" x1="40" y1="85" x2="40" y2="102"/><line class="eq" x1="30" y1="84" x2="22" y2="102"/>'+
+  '<line class="eq" x1="80" y1="10" x2="80" y2="102"/><line class="eq" x1="62" y1="12" x2="80" y2="12"/>';
+const cpPose=f=>({P:[37,79],tor:-3,legs:[{a:[61,100],k:1},{a:[57,100],k:1,f:1}],arms:[{w:j=>add(add(j.S,j.fw,7+23.2*f),j.up,-6+3.5*f)},{w:j=>add(add(j.S,j.fw,6+23.2*f),j.up,-6+3.5*f),f:1}]});
+// standing front raise, arms nearly straight, from the thighs up past the face to overhead
+const frPose=(ua)=>({P:[48,64.5],tor:ua>120?-3:0,hd:ua>120?-6:0,legs:[{a:[51,100]},{a:[46,100],f:1}],arms:[{ua,fa:ua+10},{ua:ua-1,fa:ua+9,f:1}]});
+const FR_A=[6,45,85,125,165];
+// around the world: barbell held in front, carried in a big circle (out to one side, overhead, down the other side)
+const atwPose=t=>{const a=t*D2R,Nb=[50,31.8],c=[Nb[0]-14*Math.sin(a),Nb[1]+21*Math.cos(a)];
+  return {hands:c,grip:10,ga:-6*Math.sin(a),drop:6,tl:-5*Math.sin(a),sx:-2*Math.sin(a),hw:1}};
+Object.assign(DEMO,{
+ "Machine Chest Press":{env:CP_ENV,items:[{type:"cable",from:[64,12],at:"w0"},{type:"ball",at:"w0",r:2.6}],poses:[0,.35,.7,1].map(cpPose)},
+ "Barbell Front Raise":{s:.86,env:FLOOR,dur:3,items:[{type:"plate",at:"w0",r:8}],poses:FR_A.map(frPose)},
+ "Dumbbell Front Raise":{s:.86,env:FLOOR,dur:2.6,items:[{type:"ball",at:"w0",r:3.6,c:"dbf"}],poses:FR_A.slice(0,4).map(frPose)},
+ "Around-the-World Barbell Front Raise":{view:"frontx",env:FLOOR,loop:1,dur:3.6,
+   items:[{type:"poly",cls:"eq",at:j=>{const v=[j.w1[0]-j.w0[0],j.w1[1]-j.w0[1]];return [add(j.w0,v,-.45),add(j.w1,v,.45)]}},
+     {type:"ball",c:"pl",r:4,at:j=>add(j.w0,[j.w1[0]-j.w0[0],j.w1[1]-j.w0[1]],-.4)},{type:"ball",c:"pl",r:4,at:j=>add(j.w1,[j.w1[0]-j.w0[0],j.w1[1]-j.w0[1]],.4)}],
+   poses:[0,45,90,135,180,225,270,315].map(atwPose)}
+});
+DEMO_ALIAS.unshift(
+ [/around ?the ?world|\batw\b|halo/,"Around-the-World Barbell Front Raise"],
+ [/(db|dumbbell|kettlebell|kb|plate|cable) front raise|front raises?.*(db|dumbbell)/,"Dumbbell Front Raise"],[/front raise/,"Barbell Front Raise"],
+ [/chest press|machine press|press machine|machine bench|hammer strength/,"Machine Chest Press"]);
 //END EXTRAANIM
 function buildPoses(name){
   const d=demoFor(name),s=d.s||1;
@@ -516,8 +541,14 @@ document.getElementById("dateline").textContent=new Date().toLocaleDateString(un
 function save(){SS("rep_state",st)}
 // ---- extras: pinned per where+day (rep_extras), today-only until Finish (rep_extras_today)
 let extras=LS("rep_extras")||{}, xtoday=LS("rep_extras_today")||{};
-const QUICK=["Bicep Curls","Hammer Curls","Dumbbell Pullover","Triceps Pushdown","Skull Crushers","Calf Raises","Face Pulls","Leg Curl","Leg Extension","Cable Fly","Shrugs","Ab Wheel","Russian Twist","Farmer Carry"];
+const QUICK=["Bicep Curls","Hammer Curls","Dumbbell Pullover","Triceps Pushdown","Skull Crushers","Calf Raises","Face Pulls","Leg Curl","Leg Extension","Cable Fly","Shrugs","Ab Wheel","Russian Twist","Farmer Carry","Machine Chest Press","Barbell Front Raise","Around-the-World Barbell Front Raise"];
 const MAXEX=30;
+// bodyweight-only: no weight box, logged by sets x reps (weight_lb stays null, like an unweighted pull-up). Matched by name, so extras/custom ones count too
+const BW_ONLY=[/^hanging (leg|knee) raises?$/];
+const normName=n=>String(n||"").toLowerCase().replace(/[-_]/g," ").replace(/\s+/g," ").trim();
+const isBW=n=>BW_ONLY.some(re=>re.test(normName(n)));
+// quick picks that come with a usual weight (fixed 25 lb barbell)
+const QUICK_W={"Barbell Front Raise":"25","Around-the-World Barbell Front Raise":"25"};
 // Core + Conditioning finisher: [name, sets, scheme, rest seconds the circle starts]; for intervals the rest is the 60 s easy part
 const FINISHER={
  home:[["Bike Intervals",6,"30s hard / 60s easy",60],["BOSU Mountain Climbers",3,"30s",30],["Dead Bug",3,"10/side",30],["DB Suitcase Carry",3,"40s/side",30]],
@@ -548,14 +579,14 @@ function dayList(where=st.where,day=st.day){
 }
 // a card bound to a store {sets,w,r}; used for the day list and the after-Finish log view
 function buildCard(it,store,onChange,opts={}){
- const {n,s,r,id,i}=it, done=(store.sets[id]||[]);
+ const {n,s,r,id,i}=it, done=(store.sets[id]||[]),bw=isBW(n);
  const card=document.createElement("div");card.className="ex"+(done.filter(Boolean).length===s?" done":"");
  const lw=last[n];
  const badge=it.x?(it.pinned?`<span class="badge pin">📌 Pinned</span>`:it.x.fin?`<span class="badge fin">🔥 Finisher</span>`:`<span class="badge">Extra</span>`):"";
  if(it.x&&it.x.fin)card.classList.add("fin");
- card.innerHTML=`<div class="exh"><div class="who"><button type="button" class="demo" aria-label="How to do ${esc(n)}">${demoSVG(n)}</button><div><div class="name">${esc(n)}${badge}</div><div class="scheme">${s} sets × ${esc(it.x?schemeTxt(r):r+" reps")}</div>${lw?`<div class="last">Last: ${esc(lw.w||"–")} lb · ${esc(lw.r||"")}</div>`:""}</div></div>
- <div class="wt"><input inputmode="decimal" placeholder="${esc(lw&&lw.w?lw.w:"lb")}" value="${esc(store.w[id]||"")}"><small>lb</small>${it.x?`<button type="button" class="xrm" aria-label="Remove ${esc(n)}">✕</button>`:""}</div></div><div class="sets"></div>`;
- card.querySelector(".wt input").oninput=e=>{store.w[id]=e.target.value;onChange(false)};
+ card.innerHTML=`<div class="exh"><div class="who"><button type="button" class="demo" aria-label="How to do ${esc(n)}">${demoSVG(n)}</button><div><div class="name">${esc(n)}${badge}</div><div class="scheme">${s} sets × ${esc(it.x?schemeTxt(r):r+" reps")}</div>${lw?`<div class="last">Last: ${bw?esc(lw.r||"–")+" reps":esc(lw.w||"–")+" lb · "+esc(lw.r||"")}</div>`:""}</div></div>
+ <div class="wt">${bw?`<span class="bwtag">Bodyweight</span>`:`<input inputmode="decimal" placeholder="${esc(lw&&lw.w?lw.w:"lb")}" value="${esc(store.w[id]||"")}"><small>lb</small>`}${it.x?`<button type="button" class="xrm" aria-label="Remove ${esc(n)}">✕</button>`:""}</div></div><div class="sets"></div>`;
+ const wi=card.querySelector(".wt input");if(wi)wi.oninput=e=>{store.w[id]=e.target.value;onChange(false)};
  const sets=card.querySelector(".sets");
  for(let k=0;k<s;k++){
   const wrap=document.createElement("div");wrap.className="setwrap";
@@ -627,15 +658,16 @@ document.getElementById("addgo").onclick=()=>{
  if(!name){toast("Type a name or tap one ✍️");return}
  const scheme=(document.getElementById("addscheme").value.trim()||"10–12 reps").slice(0,24);
  const e={id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),name,sets:addSets,scheme};
+ const qw=QUICK_W[Object.keys(QUICK_W).find(q=>q.toLowerCase()===name.toLowerCase())];
  if(addMode==="day"){
   if(dayList().length>=MAXEX){toast("That's the max for one day");return}
   const k=st.where+st.day,box=document.getElementById("addpin").checked?extras:xtoday;
-  (box[k]=box[k]||[]).push(e);saveExtras();
+  (box[k]=box[k]||[]).push(e);saveExtras();if(qw&&!last[name]){st.w[k+"x"+e.id]=qw;save()}
   document.getElementById("addsheet").classList.remove("show");render();
   toast(box===extras?`📌 ${name} pinned to Day ${st.day}`:`${name} added for today`);
  }else{
   if(adx.length>=MAXEX){toast("That's the max for one send");return}
-  adx.push(e);document.getElementById("addsheet").classList.remove("show");openLog();
+  adx.push(e);if(qw&&!last[name])adst.w["ad"+e.id]=qw;document.getElementById("addsheet").classList.remove("show");openLog();
  }
 };
 // ---- after-Finish log view
@@ -675,17 +707,17 @@ function sendToRep(payload,onFail){
 function collect(list,store){
  let sets=0;const items=[],lines=[],exercises=[];
  list.forEach(it=>{const {n,s:planned,r:scheme,id}=it,c=(store.sets[id]||[]).filter(Boolean).length;sets+=c;
-  const rawR=store.r[id]||[];
+  const rawR=store.r[id]||[],wv=isBW(n)?"":store.w[id];
   const reps=rawR.filter(Boolean).join("/");
-  const wnum=store.w[id]===""||store.w[id]==null?NaN:parseFloat(store.w[id]);
+  const wnum=wv===""||wv==null?NaN:parseFloat(wv);
   const weight_lb=Number.isFinite(wnum)?wnum:null;
   const repsNums=rawR.map(v=>{const x=parseFloat(v);return Number.isFinite(x)?x:null}).filter(v=>v!==null);
   const ex={name:n,scheme:scheme||"",weight_lb,reps:repsNums,sets_done:c,sets_planned:planned};
   if(it.x){ex.extra=true;ex.pinned=!!it.pinned}
   exercises.push(ex);
   const tag=it.x?" (extra)":"";
-  if(c){items.push(`${n} ${store.w[id]?store.w[id]+"lb ":""}${reps||c+" sets"}`);last[n]={w:store.w[id]||(last[n]&&last[n].w)||"",r:reps};
-   lines.push(`${n}${tag}: ${store.w[id]?store.w[id]+" lb":"bodyweight/no wt"} × ${reps||"?"} (${c}/${planned} sets)`)}
+  if(c){items.push(`${n} ${wv?wv+"lb ":""}${reps||c+" sets"}`);last[n]={w:isBW(n)?"":wv||(last[n]&&last[n].w)||"",r:reps};
+   lines.push(`${n}${tag}: ${wv?wv+" lb":"bodyweight/no wt"} × ${reps||"?"} (${c}/${planned} sets)`)}
   else lines.push(`${n}${tag}: skipped`)});
  return {sets,items,lines,exercises};
 }

@@ -34,6 +34,7 @@ h1{font-size:30px;font-weight:900;margin:0;letter-spacing:-.5px;background:linea
 .name{font-size:18px;font-weight:800}
 .scheme{color:var(--b);font-weight:700;font-size:13px;margin-top:3px}
 .last{color:var(--dim);font-size:12px;margin-top:3px}
+.prog{color:var(--b);font-size:12px;font-weight:800;margin-top:3px}
 .wt{display:flex;align-items:center;gap:6px}
 .wt input{width:72px;padding:9px 8px;border-radius:12px;border:1px solid #2f2f47;background:var(--card2);color:var(--text);font-size:17px;font-weight:800;text-align:center}
 .wt small{color:var(--dim);font-size:12px}
@@ -46,13 +47,19 @@ h1{font-size:30px;font-weight:900;margin:0;letter-spacing:-.5px;background:linea
 .set.on b{opacity:0}
 .reps{width:54px;font-size:11px;color:var(--dim);text-align:center;margin-top:4px}
 .setwrap{display:flex;flex-direction:column;align-items:center}
-.repsin{width:54px;margin-top:6px;padding:5px 2px;border-radius:9px;border:1px solid #2f2f47;background:var(--card2);color:var(--text);font-size:14px;font-weight:700;text-align:center}
+.repsin{width:54px;margin-top:6px;padding:5px 2px;border-radius:9px;border:1.5px solid #4a4a6e;background:var(--card2);color:var(--text);font-size:14px;font-weight:700;text-align:center}
 .bar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(env(safe-area-inset-bottom) + 12px);background:rgba(11,11,18,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid #222235;display:flex;gap:10px;align-items:center}
 .timer{flex:1;display:flex;align-items:center;gap:10px}
 .tbtn{padding:12px 12px;border-radius:14px;background:var(--card);border:1px solid #2a2a3d;color:var(--text);font-weight:800;font-size:14px}
 .clock{font-variant-numeric:tabular-nums;font-size:24px;font-weight:900;min-width:64px}
 .clock.go{color:var(--b)}
 .finish{padding:14px 18px;border-radius:14px;border:0;font-weight:900;font-size:15px;color:#fff;background:linear-gradient(135deg,var(--a),var(--b))}
+.finish.fdone{flex:1;padding:9px 12px;font-size:14px;line-height:1.2;background:rgba(46,229,157,.14);color:var(--ok);border:1.5px solid rgba(46,229,157,.45)}
+.finish.fdone small{display:block;font-size:11.5px;font-weight:800;opacity:.9}
+.finish.fwarn{background:rgba(255,176,32,.14);color:var(--b);border-color:rgba(255,176,32,.5)}
+.donebox{background:var(--card);border-radius:18px;padding:14px 16px;margin-bottom:12px;border:1.5px solid rgba(46,229,157,.35)}
+.donebox h3{margin:0 0 4px;font-size:17px;color:var(--ok)}.donebox .ds{font-size:12.5px;color:var(--dim);font-weight:700;margin-bottom:8px}
+.donebox .dl{font-size:13.5px;line-height:1.55;color:var(--text)}.donebox .row{display:flex;gap:8px;margin-top:6px}.donebox .ghost{flex:1;font-size:13.5px;padding:11px 8px}
 .note{color:var(--dim);font-size:12px;line-height:1.45;margin:6px 2px 16px}
 .hist{margin-top:22px}
 .hist h3{font-size:15px;color:var(--dim);margin:0 0 8px;text-transform:uppercase;letter-spacing:1px}
@@ -240,9 +247,12 @@ const DEMO={
    items:[{type:"plate",at:"w0",r:14}],poses:[
    {P:[58,70.5],tor:-90,legs:[{a:[77,100],k:1}],arms:[{w:[34,41.5]}]},
    {P:[58,70.5],tor:-90,legs:[{a:[77,100],k:1}],arms:[{w:[38,58],e:-1}]}]},
- "Barbell Row":{env:FLOOR,items:[{type:"plate",at:"w0",r:14}],poses:[
-   {P:[38,62],tor:72,hd:-15,legs:[{a:[55,100]}],arms:[{w:j=>add(j.S,[-3,29.5])}]},
-   {P:[38,62],tor:72,hd:-15,legs:[{a:[55,100]}],arms:[{w:j=>add(add(j.P,j.up,17),j.fw,5),e:1}]}]},
+ "Barbell Row":(()=>{ // bent-over row: hips hinged, flat back ~38° above horizontal, soft knees, shins near vertical; torso fixed, only the arms move
+   const ROW=w=>({P:[44,61.5],tor:52,hd:-6,legs:[{a:[55,100.6]}],arms:[{w}]});
+   return {env:FLOOR,items:[{type:"plate",at:"w0",r:9}],poses:[
+   ROW(j=>add(j.S,[-3,30.75])),                        // bar hanging, arms straight under the shoulders
+   ROW([58.5,67]),                            // halfway up
+   ROW(j=>add(add(j.P,j.up,9),j.fw,4))]}})(),          // bar at the lower ribs/belly, elbows back past the torso
  "Romanian Deadlift":RDL({type:"plate",at:"w0",r:14}),
  "DB Romanian Deadlift":RDL(DB),
  "Hanging Leg Raise":{s:.85,env:'<line class="eq" x1="18" y1="10" x2="86" y2="10"/><line class="eq" x1="22" y1="10" x2="22" y2="4"/><line class="eq" x1="82" y1="10" x2="82" y2="4"/>',poses:[
@@ -538,12 +548,56 @@ document.getElementById("zoom").addEventListener("click",e=>{if(e.target.id==="z
 const LS=k=>JSON.parse(localStorage.getItem(k)||"null"), SS=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 let st=LS("rep_state")||{day:"A",where:"gym",sets:{},w:{},r:{}};
 let last=LS("rep_last")||{}, hist=LS("rep_hist")||[];
+//PERSONAL SEED: one-time next Gym Day A weights set with Rep on 2026-11-23 (that day's reps didn't sync). Only raises; never re-applies.
+(()=>{const K="rep_seed_20261123_gymA";if(localStorage.getItem(K))return;
+ const S={"Back Squat":70,"Bench Press":145,"Barbell Row":70,"Romanian Deadlift":80};
+ for(const [n,v] of Object.entries(S)){const cur=parseFloat(last[n]&&last[n].w);if(!(cur>=v))last[n]=Object.assign({},last[n]||{},{nx:String(v)})}
+ SS("rep_last",last);localStorage.setItem(K,new Date().toISOString())})();
+//END PERSONAL SEED
 const HIST_MAX=1000; // was 50; the permanent copy lives on the relay (KV), this is the on-phone copy
 const newId=()=>"w"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 if(hist.some(e=>!e.id)){hist.forEach(e=>{if(!e.id)e.id=newId()});SS("rep_hist",hist)}
 const key=()=>st.where+st.day;
 document.getElementById("dateline").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric"});
 function save(){SS("rep_state",st)}
+// ---- finished state, per where+day: {date (local), id, sync: pending|ok|fail|saved, at, payload (kept until the send goes through), dismissed}
+const SYNC=true; // this copy sends to the relay; without one a finish is just "saved"
+let fdone=LS("rep_done")||{};
+const saveDone=()=>SS("rep_done",fdone);
+function doneFor(k){
+ const today=todayIso(),d=fdone[k];
+ if(d&&d.date===today)return d.dismissed?null:d;
+ // a finish from before this was tracked: today's session for this day in the history
+ const e=hist.find(x=>x.iso===today&&x.where+x.day===k);
+ return e?{date:today,id:e.id,sync:SYNC?(e.bk?"ok":"unknown"):"saved",legacy:1}:null;
+}
+const hm=iso=>new Date(iso).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
+function finishLabel(d){
+ if(!d)return st.edit&&st.edit.k===key()?(SYNC?"Save & re-send ✏️":"Save changes ✏️"):"Finish 💪";
+ const s=!SYNC||d.sync==="saved"?"saved":d.sync==="ok"?"synced"+(d.at?" "+hm(d.at):""):d.sync==="fail"?"saved, not synced yet · tap to retry":d.sync==="pending"?"sending…":"saved";
+ return `✓ Finished today<small> · ${esc(s)}</small>`;
+}
+function updateFinish(){const b=document.getElementById("finish"),d=doneFor(key());b.innerHTML=finishLabel(d);b.className="finish"+(d?" fdone"+(SYNC&&d.sync==="fail"?" fwarn":""):"")}
+function markSync(k,sync){const d=fdone[k];if(!d)return;d.sync=sync;if(sync==="ok"){d.at=new Date().toISOString();delete d.payload}saveDone();updateFinish();if(k===key()&&!(st.edit&&st.edit.k===k))render()}
+function doneBox(d){
+ const k=key(),e=hist.find(x=>x.id===d.id),box=document.createElement("div");box.className="donebox";box.id="donebox";
+ const lines=e?(e.lines||e.main_lines||e.items||[]):[];
+ box.innerHTML=`<h3>✓ Day ${esc(st.day)} finished today</h3><div class="ds">${e?`${e.sets} sets · `:""}${esc(finishLabel(d).replace(/<\/?small>/g,"").replace(/^✓ Finished today · /,""))}</div><div class="dl">${lines.map(esc).join("<br>")}</div>
+ <div class="row"><button type="button" class="ghost" id="fagain">Start another session</button>${e?`<button type="button" class="ghost" id="fedit">${SYNC?"Edit and re-send":"Edit and re-save"}</button>`:""}</div>`;
+ box.querySelector("#fagain").onclick=()=>{fdone[k]={date:todayIso(),id:d.id,dismissed:true};saveDone();delete st.edit;save();render();toast("Fresh session. Go 💪")};
+ const ed=box.querySelector("#fedit");if(ed)ed.onclick=()=>editFinished(k,e);
+ return box;
+}
+// put a finished session back on its day (sets, weights, reps, today's extras) so it can be fixed and sent again under the same id
+function editFinished(k,e){
+ const ws=e.where,dy=e.day;
+ const have=new Set(dayList(ws,dy).map(it=>it.n+"|"+!!it.x));
+ (e.exercises||[]).forEach((x,i)=>{if(x.extra&&!x.pinned&&!have.has(x.name+"|true")){(xtoday[k]=xtoday[k]||[]).push({id:Date.now().toString(36)+"e"+i,name:x.name,sets:x.sets_planned||x.sets_done||3,scheme:x.scheme||"10–12 reps"});have.add(x.name+"|true")}});
+ saveExtras();const used=new Set();
+ dayList(ws,dy).forEach(it=>{const j=(e.exercises||[]).findIndex((x,i)=>!used.has(i)&&x.name===it.n&&!!x.extra===!!it.x);if(j<0)return;used.add(j);const x=e.exercises[j];
+  st.sets[it.id]=Array.from({length:it.s},(_,i)=>i<x.sets_done);st.w[it.id]=x.weight_lb==null?"":String(x.weight_lb);st.r[it.id]=(x.reps||[]).map(String)});
+ fdone[k]={date:todayIso(),id:e.id,dismissed:true};saveDone();st.edit={k,id:e.id};save();render();toast(SYNC?"Fix it, then tap Save & re-send":"Fix it, then tap Save changes");
+}
 // ---- extras: pinned per where+day (rep_extras), today-only until Finish (rep_extras_today)
 let extras=LS("rep_extras")||{}, xtoday=LS("rep_extras_today")||{};
 const QUICK=["Bicep Curls","Hammer Curls","Dumbbell Pullover","Triceps Pushdown","Skull Crushers","Calf Raises","Face Pulls","Leg Curl","Leg Extension","Cable Fly","Shrugs","Ab Wheel","Russian Twist","Farmer Carry","Machine Chest Press","Barbell Front Raise","Around-the-World Barbell Front Raise","Bench Dips"];
@@ -559,6 +613,24 @@ const FINISHER={
  home:[["Bike Intervals",6,"30s hard / 60s easy",60],["BOSU Mountain Climbers",3,"30s",30],["Dead Bug",3,"10/side",30],["DB Suitcase Carry",3,"40s/side",30]],
  gym:[["Bike or Rower Intervals",6,"30s hard / 60s easy",60],["Cable Woodchop",3,"12/side",30],["Pallof Press",3,"10/side",30],["Ab Wheel Rollout",3,"8",45]]};
 const isTimed=r=>/^\s*\d+\s*s\b/i.test(String(r||""));
+// the plan target for one set: top of a range ("10–12" -> 12), a single number ("10/side" -> 10), seconds for timed ("30s" -> 30); "" for "max"
+const repTarget=r=>{const m=String(r||"").match(/(\d+)(?:\s*[–-]\s*(\d+))?/);return m?(m[2]||m[1]):""};
+const repSet=v=>v!=null&&v!==""&&parseFloat(v)>0;
+// ---- progression: next session's weight from last time. Full session (every set checked) at the top of the range -> +5 lb upper body, +10 lb lower body; otherwise same weight.
+// bodyweight and timed items are skipped. last[n] = {w, r, c: sets done, p: sets planned, t: rep target}; nx = a one-off set weight.
+const LOWER=/squat|deadlift|\brdl\b|romanian|lunge|leg press|step ?ups?\b|hip thrust|glute|good ?mornings?|calf|leg curl|leg extension|hamstring|hack|sumo|trap ?bar|adductor|abductor/;
+const isLower=n=>LOWER.test(normName(n));
+function nextW(n,scheme){
+ const L=last[n];if(!L||isBW(n))return null;
+ const w=parseFloat(L.w);
+ if(L.nx){const nx=parseFloat(L.nx);return {w:String(L.nx),inc:Number.isFinite(w)?nx-w:0,from:L.w||""}}
+ if(!Number.isFinite(w)||w<=0)return null;
+ if(isTimed(scheme))return {w:String(L.w),inc:0,from:L.w};
+ const top=parseFloat(L.t),reps=String(L.r||"").split("/").map(parseFloat);
+ const hit=L.p>0&&L.c>=L.p&&top>0&&reps.length>=L.p&&reps.every(x=>x>=top);
+ const inc=hit?(isLower(n)?10:5):0;
+ return {w:String(Math.round((w+inc)*100)/100),inc,from:L.w};
+}
 const finOn=(where=st.where,day=st.day)=>(xtoday[where+day]||[]).some(e=>e.fin);
 function toggleFinisher(){
  const k=st.where+st.day,cur=xtoday[k]||[];
@@ -586,18 +658,23 @@ function dayList(where=st.where,day=st.day){
 function buildCard(it,store,onChange,opts={}){
  const {n,s,r,id,i}=it, done=(store.sets[id]||[]),bw=isBW(n);
  const card=document.createElement("div");card.className="ex"+(done.filter(Boolean).length===s?" done":"");
- const lw=last[n];
+ const lw=last[n],sug=bw?null:nextW(n,r),wval=store.w[id]!==undefined?store.w[id]:(sug?sug.w:"");
  const badge=it.x?(it.pinned?`<span class="badge pin">📌 Pinned</span>`:it.x.fin?`<span class="badge fin">🔥 Finisher</span>`:`<span class="badge">Extra</span>`):"";
  if(it.x&&it.x.fin)card.classList.add("fin");
- card.innerHTML=`<div class="exh"><div class="who"><button type="button" class="demo" aria-label="How to do ${esc(n)}">${demoSVG(n)}</button><div><div class="name">${esc(n)}${badge}</div><div class="scheme">${s} sets × ${esc(it.x?schemeTxt(r):r+" reps")}</div>${lw?`<div class="last">Last: ${bw?esc(lw.r||"–")+" reps":esc(lw.w||"–")+" lb · "+esc(lw.r||"")}</div>`:""}</div></div>
- <div class="wt">${bw?`<span class="bwtag">Bodyweight</span>`:`<input inputmode="decimal" placeholder="${esc(lw&&lw.w?lw.w:"lb")}" value="${esc(store.w[id]||"")}"><small>lb</small>`}${it.x?`<button type="button" class="xrm" aria-label="Remove ${esc(n)}">✕</button>`:""}</div></div><div class="sets"></div>`;
- const wi=card.querySelector(".wt input");if(wi)wi.oninput=e=>{store.w[id]=e.target.value;onChange(false)};
+ card.innerHTML=`<div class="exh"><div class="who"><button type="button" class="demo" aria-label="How to do ${esc(n)}">${demoSVG(n)}</button><div><div class="name">${esc(n)}${badge}</div><div class="scheme">${s} sets × ${esc(it.x?schemeTxt(r):r+" reps")}</div>${lw?`<div class="last">Last: ${bw?esc(lw.r||"–")+" reps":esc(lw.w||"–")+" lb"+(lw.r?" · "+esc(lw.r):"")}</div>`:""}${sug&&sug.inc>0?`<div class="prog"${store.w[id]!==undefined&&store.w[id]!==sug.w?" hidden":""}>↑ +${esc(sug.inc)} from ${esc(sug.from||"–")}</div>`:""}</div></div>
+ <div class="wt">${bw?`<span class="bwtag">Bodyweight</span>`:`<input inputmode="decimal" placeholder="lb" value="${esc(wval)}"><small>lb</small>`}${it.x?`<button type="button" class="xrm" aria-label="Remove ${esc(n)}">✕</button>`:""}</div></div><div class="sets"></div>`;
+ const wi=card.querySelector(".wt input");if(wi){wi.oninput=e=>{store.w[id]=e.target.value;const pc=card.querySelector(".prog");if(pc)pc.hidden=!(sug&&e.target.value===sug.w);onChange(false)};wi.onfocus=()=>setTimeout(()=>wi.select(),0)}
  const sets=card.querySelector(".sets");
  for(let k=0;k<s;k++){
   const wrap=document.createElement("div");wrap.className="setwrap";
   const b=document.createElement("button");b.className="set"+(done[k]?" on":"");b.innerHTML=`<b>${k+1}</b>`;
-  b.onclick=()=>{const a=store.sets[id]||[];a[k]=!a[k];store.sets[id]=a;onChange(false);if(a[k]){navigator.vibrate&&navigator.vibrate(30);startTimer(it.x&&it.x.rest?it.x.rest:i<2&&opts.where==="gym"?150:90)}onChange(true)};
-  const ri=document.createElement("input");ri.className="repsin";ri.inputMode="numeric";ri.placeholder=isTimed(r)?"sec":"reps";ri.value=(store.r[id]||[])[k]||"";
+  const tgt=repTarget(r);
+  b.onclick=()=>{const a=store.sets[id]||[];a[k]=!a[k];store.sets[id]=a;
+   // checking a set with an untouched box records the pre-filled target; unchecking drops it again if it was never changed
+   const rr=store.r[id]||[];if(a[k]&&tgt&&!repSet(rr[k])){rr[k]=tgt;store.r[id]=rr}else if(!a[k]&&tgt&&rr[k]===tgt){rr[k]="";store.r[id]=rr}
+   onChange(false);if(a[k]){navigator.vibrate&&navigator.vibrate(30);startTimer(it.x&&it.x.rest?it.x.rest:i<2&&opts.where==="gym"?150:90)}onChange(true)};
+  const ri=document.createElement("input");ri.className="repsin";ri.inputMode="numeric";ri.placeholder=isTimed(r)?"sec":"reps";{const v=(store.r[id]||[])[k];ri.value=v!=null&&v!==""?v:tgt}ri.setAttribute("aria-label",`Set ${k+1} ${isTimed(r)?"seconds":"reps"}`);
+  ri.onfocus=()=>setTimeout(()=>ri.select(),0);
   ri.oninput=e=>{const a=store.r[id]||[];a[k]=e.target.value;store.r[id]=a;onChange(false)};
   wrap.appendChild(b);wrap.appendChild(ri);sets.appendChild(wrap);
  }
@@ -616,7 +693,9 @@ function render(){
  const tabs=document.getElementById("tabs");tabs.innerHTML="";
  ["A","B","C"].forEach(d=>{const b=document.createElement("button");b.className="tab"+(st.day===d?" on":"");b.textContent="Day "+d;b.onclick=()=>{st.day=d;save();render()};tabs.appendChild(b)});
  document.querySelectorAll(".pill").forEach(p=>p.classList.toggle("on",p.dataset.w===st.where));
- const list=document.getElementById("list");list.innerHTML="";
+ const list=document.getElementById("list");list.innerHTML="";updateFinish();
+ const fd=doneFor(key());
+ if(fd){list.appendChild(doneBox(fd));document.getElementById("prog").style.strokeDashoffset=0;document.getElementById("pct").textContent="✓";renderHist();return}
  dayList().forEach(it=>list.appendChild(buildCard(it,st,re=>{save();if(re)render()},{where:st.where,onRemove:removeExtra})));
  const add=document.createElement("button");add.type="button";add.className="addex";add.id="addex";add.textContent="+ Add exercise";
  add.onclick=()=>openAdd("day");
@@ -695,7 +774,7 @@ function tick(){const left=Math.max(0,Math.round((tEnd-Date.now())/1000));clock.
 document.querySelectorAll(".tbtn").forEach(b=>b.onclick=()=>startTimer(+b.dataset.t));
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2200)}
 const RELAY_URL="https://rep-relay.pages.dev/";
-function sendToRep(payload,onFail){
+function sendToRep(payload,onFail,onOk){
  const ctrl=new AbortController();
  const timer=setTimeout(()=>ctrl.abort(),8000);
  const fail=()=>{toast("Couldn't send, tap Send to Rep");onFail&&onFail()};
@@ -703,7 +782,7 @@ function sendToRep(payload,onFail){
   .then(async res=>{
    let ok=res.ok;
    if(ok){try{const j=await res.json();if(j&&j.ok===false)ok=false}catch(e){}}
-   ok?toast("Sent to Rep ✅"):fail();
+   ok?(toast("Sent to Rep ✅"),onOk&&onOk()):fail();
   })
   .catch(fail)
   .finally(()=>clearTimeout(timer));
@@ -712,7 +791,9 @@ function sendToRep(payload,onFail){
 function collect(list,store){
  let sets=0;const items=[],lines=[],exercises=[];
  list.forEach(it=>{const {n,s:planned,r:scheme,id}=it,c=(store.sets[id]||[]).filter(Boolean).length;sets+=c;
-  const rawR=store.r[id]||[],wv=isBW(n)?"":store.w[id];
+  const done=store.sets[id]||[],tgt=repTarget(scheme),typed=store.r[id]||[],sug=isBW(n)?null:nextW(n,scheme),wv=isBW(n)?"":store.w[id]!==undefined?store.w[id]:(sug?sug.w:"");
+  // a checked set whose box was left blank or 0 counts as the target it showed
+  const rawR=Array.from({length:Math.max(typed.length,done.length)},(_,k)=>done[k]&&tgt&&!repSet(typed[k])?tgt:typed[k]);
   const reps=rawR.filter(Boolean).join("/");
   const wnum=wv===""||wv==null?NaN:parseFloat(wv);
   const weight_lb=Number.isFinite(wnum)?wnum:null;
@@ -721,26 +802,35 @@ function collect(list,store){
   if(it.x){ex.extra=true;ex.pinned=!!it.pinned}
   exercises.push(ex);
   const tag=it.x?" (extra)":"";
-  if(c){items.push(`${n} ${wv?wv+"lb ":""}${reps||c+" sets"}`);last[n]={w:isBW(n)?"":wv||(last[n]&&last[n].w)||"",r:reps};
+  if(c){items.push(`${n} ${wv?wv+"lb ":""}${reps||c+" sets"}`);last[n]={w:isBW(n)?"":wv||(last[n]&&last[n].w)||"",r:reps,c,p:planned,t:tgt};
    lines.push(`${n}${tag}: ${wv?wv+" lb":"bodyweight/no wt"} × ${reps||"?"} (${c}/${planned} sets)`)}
   else lines.push(`${n}${tag}: skipped`)});
  return {sets,items,lines,exercises};
 }
 document.getElementById("finish").onclick=()=>{
  const day=st.day,where=st.where,k=where+day;
+ const fd=doneFor(k);
+ if(fd){ // already finished today: retry a failed send, otherwise show the summary
+  if(SYNC&&fd.sync==="fail"&&fd.payload){fd.sync="pending";saveDone();updateFinish();sendToRep(fd.payload,()=>markSync(k,"fail"),()=>markSync(k,"ok"));return}
+  const e=hist.find(x=>x.id===fd.id);if(e)openSheet(fmt(e),"Finished today ✓");return}
+ const ed=st.edit&&st.edit.k===k?st.edit:null;
  const list=dayList(where,day);
  const lastBefore=JSON.stringify(last);
  const {sets,items,lines,exercises}=collect(list,st);
  if(!sets){last=JSON.parse(lastBefore);toast("Check off a set first 😤");return}
- const dt=new Date();const entry={id:newId(),date:dt.toLocaleDateString(undefined,{month:"short",day:"numeric"}),iso:localIso(dt),day,where,sets,items,lines,exercises,main_sets:sets,main_lines:lines.slice(),adds:[]};
- hist.unshift(entry);
+ const dt=new Date();const entry={id:ed?ed.id:newId(),date:dt.toLocaleDateString(undefined,{month:"short",day:"numeric"}),iso:localIso(dt),day,where,sets,items,lines,exercises,main_sets:sets,main_lines:lines.slice(),adds:[]};
+ const oi=ed?hist.findIndex(x=>x.id===ed.id):-1;
+ if(oi>=0){const o=hist[oi];entry.adds=o.adds||[];entry.adds.forEach(a=>{entry.sets+=a.sets||0;entry.lines=entry.lines.concat((a.lines||[]).map(l=>"+ "+l))});hist[oi]=entry}else hist.unshift(entry);
+ delete st.edit;
  SS("rep_hist",hist.slice(0,HIST_MAX));SS("rep_last",last);
  clearIds(st,list.map(it=>it.id));
  delete xtoday[k];saveExtras();
  st.day={A:"B",B:"C",C:"A"}[day];save();render();window.scrollTo({top:0,behavior:"smooth"});
- const summary=fmt(entry);
+ const summary=fmt({...entry,lines});
  openSheet(summary);
- sendToRep({type:"workout",id:entry.id,date:entry.iso,day,where,sets,lines,exercises,summary});
+ const payload={type:"workout",id:entry.id,date:entry.iso,day,where,sets,lines,exercises,summary};
+ fdone[k]={date:entry.iso,id:entry.id,sync:SYNC?"pending":"saved",payload:SYNC?payload:undefined};saveDone();updateFinish();
+ sendToRep(payload,()=>markSync(k,"fail"),()=>markSync(k,"ok"));
  setTimeout(()=>backupHistory(false),4000);
 };
 document.getElementById("logsend").onclick=()=>{

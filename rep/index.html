@@ -486,6 +486,11 @@ DEMO_ALIAS.unshift(
  [/around ?the ?world|\batw\b|halo/,"Around-the-World Barbell Front Raise"],
  [/(db|dumbbell|kettlebell|kb|plate|cable) front raise|front raises?.*(db|dumbbell)/,"Dumbbell Front Raise"],[/front raise/,"Barbell Front Raise"],
  [/chest press|machine press|press machine|machine bench|hammer strength/,"Machine Chest Press"]);
+// ---- bench dips: hands on a low bench behind, legs out long in front, heels down; elbows bend straight back to ~90°
+const BD_ENV=FLOOR+'<rect class="eqf" x="3" y="76" width="27" height="5" rx="2"/><line class="eq" x1="8" y1="81" x2="8" y2="102"/><line class="eq" x1="25" y1="81" x2="25" y2="102"/>';
+const bdPose=P=>({P,tor:-6,hd:4,legs:[{a:[68,99],fa:-62,k:1},{a:[65.5,99],fa:-62,k:1,f:1}],arms:[{w:[28,76]},{w:[26,76],f:1}]});
+DEMO["Bench Dips"]={env:BD_ENV,poses:[bdPose([34,72.9]),bdPose([35,82.5])]};
+DEMO_ALIAS.unshift([/\b(bench|chair|box|couch|sofa|step) dips?\b|\bdips? (on|off|from) (a |the )?(bench|chair|box|couch|sofa|step)/,"Bench Dips"]);
 //END EXTRAANIM
 function buildPoses(name){
   const d=demoFor(name),s=d.s||1;
@@ -541,10 +546,10 @@ document.getElementById("dateline").textContent=new Date().toLocaleDateString(un
 function save(){SS("rep_state",st)}
 // ---- extras: pinned per where+day (rep_extras), today-only until Finish (rep_extras_today)
 let extras=LS("rep_extras")||{}, xtoday=LS("rep_extras_today")||{};
-const QUICK=["Bicep Curls","Hammer Curls","Dumbbell Pullover","Triceps Pushdown","Skull Crushers","Calf Raises","Face Pulls","Leg Curl","Leg Extension","Cable Fly","Shrugs","Ab Wheel","Russian Twist","Farmer Carry","Machine Chest Press","Barbell Front Raise","Around-the-World Barbell Front Raise"];
+const QUICK=["Bicep Curls","Hammer Curls","Dumbbell Pullover","Triceps Pushdown","Skull Crushers","Calf Raises","Face Pulls","Leg Curl","Leg Extension","Cable Fly","Shrugs","Ab Wheel","Russian Twist","Farmer Carry","Machine Chest Press","Barbell Front Raise","Around-the-World Barbell Front Raise","Bench Dips"];
 const MAXEX=30;
 // bodyweight-only: no weight box, logged by sets x reps (weight_lb stays null, like an unweighted pull-up). Matched by name, so extras/custom ones count too
-const BW_ONLY=[/^hanging (leg|knee) raises?$/];
+const BW_ONLY=[/^hanging (leg|knee) raises?$/,/^(bench|chair) dips?$/];
 const normName=n=>String(n||"").toLowerCase().replace(/[-_]/g," ").replace(/\s+/g," ").trim();
 const isBW=n=>BW_ONLY.some(re=>re.test(normName(n)));
 // quick picks that come with a usual weight (fixed 25 lb barbell)

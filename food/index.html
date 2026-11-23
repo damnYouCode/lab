@@ -135,9 +135,13 @@ textarea.tin{min-height:84px;resize:vertical;line-height:1.35}
 .seg{display:flex;background:var(--card2);border:1px solid #2f2f47;border-radius:12px;padding:3px;flex:none}
 .seg button{border:0;background:none;color:var(--dim);font-weight:900;font-size:13px;padding:9px 10px;border-radius:9px}
 .seg button.on{background:#2f2f47;color:var(--text)}
-.step{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.step{display:flex;align-items:center;gap:6px;flex:none;min-width:0;margin-left:auto}
 .step button{width:40px;height:44px;border-radius:12px;border:1px solid #2f2f47;background:var(--card2);color:var(--text);font-size:20px;font-weight:900;flex:none}
-.step input{flex:1;min-width:0;padding:11px 4px;border-radius:12px;border:1px solid #2f2f47;background:var(--card2);color:var(--text);font-size:18px;font-weight:900;text-align:center}
+.step input{flex:none;width:64px;max-width:64px;height:44px;box-sizing:border-box;padding:0 4px;border-radius:12px;border:1px solid #2f2f47;background:var(--card2);color:var(--text);font-size:17px;font-weight:900;text-align:center;-webkit-appearance:none;appearance:none}
+.step .qunit{display:none;color:var(--dim);font-size:13px;font-weight:800}
+#edamtwrap.derived .seg{display:none}
+#edamtwrap.derived .step{margin-left:0}
+#edamtwrap.derived .qunit{display:inline}
 .ehead{display:flex;gap:12px;align-items:flex-start}
 .thumb{width:76px;height:96px;object-fit:cover;border-radius:12px;border:1px solid #2f2f47;flex:none;background:var(--card2)}
 .warnbox{background:rgba(255,204,102,.1);border:1px solid rgba(255,204,102,.3);color:var(--warn);border-radius:12px;padding:9px 11px;font-size:12.5px;font-weight:700;line-height:1.4;margin-top:10px}
@@ -265,9 +269,9 @@ summary{color:var(--dim);font-size:13px;font-weight:800}
   <div id="edamtwrap">
     <label class="lbl">How much did you eat?</label>
     <div class="amt"><div class="seg"><button data-m="serv" class="on">Servings</button><button data-m="g">Grams</button></div>
-    <div class="step"><button id="qminus">−</button><input id="qty" inputmode="decimal" value="1"><button id="qplus">+</button></div></div>
+    <div class="step"><button id="qminus" type="button" aria-label="Less">−</button><input id="qty" inputmode="decimal" value="1" size="4" aria-label="Quantity"><button id="qplus" type="button" aria-label="More">+</button><span class="qunit">servings</span></div></div>
   </div>
-  <div id="edfreewrap"><label class="lbl">Amount</label><input class="tin" id="edamount" maxlength="40" placeholder="e.g. 1 bowl, 150 g"></div>
+  <div id="edfreewrap"><label class="lbl" for="edamount">One serving is <span style="font-weight:600">(optional)</span></label><input class="tin" id="edamount" maxlength="40" placeholder="e.g. 1 large egg, 1 bowl"></div>
   <label class="lbl">Totals for what you ate <span style="font-weight:600">(blank = Rep estimates)</span></label>
   <div class="grid4"><label>kcal<input id="ecal" inputmode="decimal" placeholder="?"></label><label>Protein g<input id="epro" inputmode="decimal" placeholder="?"></label><label>Carbs g<input id="ecarb" inputmode="decimal" placeholder="?"></label><label>Fat g<input id="efat" inputmode="decimal" placeholder="?"></label></div>
   <div id="edcheck"></div>
@@ -388,12 +392,36 @@ function offToBasis(p){
  return{per100:pick("_100g"),perServing:pick("_serving"),servingG:sq&&sq>0?sq:null,servingText:(p&&p.serving_size)||"",servingsPerContainer:null,unit,packageG:parsePackageG(p&&p.quantity),packageText:(p&&p.quantity)||""};
 }
 function canMode(b,mode){if(!b)return false;return mode==="g"?!!(b.per100||(b.perServing&&b.servingG)):!!(b.perServing||(b.per100&&b.servingG))}
-function amountText(b,mode,qty,grams){const u=b&&b.unit==="ml"?"mL":"g";if(mode==="g")return r1(qty)+" "+u;const s=r1(qty)+(qty===1?" serving":" servings");return grams!=null?s+" ("+r0(grams)+" "+u+")":s}
+function amountText(b,mode,qty,grams){const u=b&&b.unit==="ml"?"mL":"g";if(mode==="g")return r1(qty)+" "+u;
+ const st=b&&b.derived?String(b.servingText||"").trim():"";
+ const s=st?(qty===1?st:r1(qty)+" × "+st):r1(qty)+(qty===1?" serving":" servings");return grams!=null?s+" ("+(grams<100?r1(grams):r0(grams))+" "+u+")":s}
+// Items with no label/database basis (describe, manual, chat-logged, saved copies of those): treat what was logged as
+// qty x one portion, so changing the quantity scales every number. Rebuilt from the item's totals each time.
+const BARE_NUM=/^\s*[\d.]+\s*$/;
+function deriveBasis(it,qty){
+ it=it||{};let q=num(qty);if(!(q>0))q=1;
+ const t=k=>{const v=num(it[k]);return v==null?null:v/q};
+ const g=num(it.grams);
+ let st=it.basis&&it.basis.derived?(it.basis.servingText||""):(it.serving_size||"");
+ if(!st&&!(it.basis&&it.basis.derived)&&it.amount&&!BARE_NUM.test(it.amount))st=String(it.amount);
+ return{derived:true,perServing:{cal:t("calories"),p:t("protein_g"),c:t("carbs_g"),f:t("fat_g"),sod:t("sodium_mg"),sug:t("sugars_g"),fib:t("fiber_g")},per100:null,servingG:g&&g>0?g/q:null,servingText:st,servingsPerContainer:null,unit:"g"};
+}
+// "2 Tbsp (33 g)" -> 33 ; null when the text has no gram amount
+function servingTextG(t){const m=String(t||"").match(/\(\s*([\d.]+)\s*(?:g|grams?)\s*\)|^\s*([\d.]+)\s*(?:g|grams?)\s*$/i);if(!m)return null;const n=num(m[1]||m[2]);return n&&n>0?n:null}
+// Serving text and Serving g disagree (e.g. Open Food Facts "serving_quantity":390 kept after the text was fixed to "2 Tbsp (33 g)"):
+// the text the person can read wins. Returns a fixed copy, or null when nothing changes.
+function reconcileServingG(b){
+ if(!b||b.derived)return null;const g=servingTextG(b.servingText);if(!g)return null;
+ const cur=num(b.servingG),same=cur&&Math.abs(cur-g)<=Math.max(1,.05*g);
+ if(same&&b.unit!=="ml")return null;
+ return Object.assign({},b,{servingG:same?cur:g,unit:"g"});
+}
 // grams OR servings -> totals for what was eaten
 function computeMacros(b,mode,qty){
  qty=num(qty);if(!b||qty==null||qty<0)return null;
  let src=null,f=0,grams=null;
- if(mode==="g"){grams=qty;if(b.per100){src=b.per100;f=qty/100}else if(b.perServing&&b.servingG){src=b.perServing;f=qty/b.servingG}}
+ // per-serving numbers are what the editor shows and the user corrects, so they win over per-100 g when both exist
+ if(mode==="g"){grams=qty;if(b.perServing&&b.perServing.cal!=null&&b.servingG){src=b.perServing;f=qty/b.servingG}else if(b.per100){src=b.per100;f=qty/100}else if(b.perServing&&b.servingG){src=b.perServing;f=qty/b.servingG}}
  else{if(b.perServing){src=b.perServing;f=qty}else if(b.per100&&b.servingG){src=b.per100;f=qty*b.servingG/100}if(b.servingG)grams=qty*b.servingG}
  if(!src)return null;
  const m=k=>src[k]==null?null:src[k]*f;
@@ -666,7 +694,7 @@ function applyEstimates(items,est,skipId){
 function applySuggestion(it){const s=it.suggestion;if(!s)return false;for(const k of MACROS)it[k]=s[k];it.rep_est=true;it.rep_note=s.note||"";it.user_edit_at=null;it.estimate_needed=false;it.est_seen=s.updated_at;delete it.suggestion;return true}
 function dismissSuggestion(it){const s=it.suggestion;if(!s)return false;it.est_seen=s.updated_at;delete it.suggestion;return true}
 const isPending=it=>!!it.estimate_needed&&MACROS.some(k=>it[k]==null);
-return{DEVICE_RE,applyEstimates,applySuggestion,dismissSuggestion,isPending,MEALS,MEAL_LABEL,MEAL_ICON,OFF_URL,OFF_FIELDS,localIso,hhmm,num,r0,r1,defaultMeal,upcEtoA,gtinOk,codeVariants,lookupOFF,offToBasis,canMode,computeMacros,parsePackageG,atwaterKcal,nutritionSanity,SANITY_MSG,detectMisplacedServing,applyMisplacedFix,overrideKey,overrideToBasis,basisToOverride,basisSnap,firstNumber,parseLabel,labelToBasis,totals,summaryText,itemLine,itemOut,buildPayload,MACROS};
+return{DEVICE_RE,applyEstimates,applySuggestion,dismissSuggestion,isPending,MEALS,MEAL_LABEL,MEAL_ICON,OFF_URL,OFF_FIELDS,localIso,hhmm,num,r0,r1,defaultMeal,upcEtoA,gtinOk,codeVariants,lookupOFF,offToBasis,canMode,computeMacros,deriveBasis,servingTextG,reconcileServingG,amountText,parsePackageG,atwaterKcal,nutritionSanity,SANITY_MSG,detectMisplacedServing,applyMisplacedFix,overrideKey,overrideToBasis,basisToOverride,basisSnap,firstNumber,parseLabel,labelToBasis,totals,summaryText,itemLine,itemOut,buildPayload,MACROS};
 })();
 if(typeof module!=="undefined")module.exports=FeedCore;
 if(typeof window!=="undefined")window.FeedCore=FeedCore;
@@ -794,7 +822,9 @@ function mealChips(boxId,sel,onPick){$(boxId).innerHTML=C.MEALS.map(m=>`<button 
 // opts: {mode:"add"|"edit", item?, source, basis?, thumb?, msg?, notFound?, label?(parsed)}
 function openEditor(o){
  const it=o.item||{};
- ed={mode:o.mode||"add",orig:it,id:it.id||uid(),date:it.date||today(),time:it.time||null,source:o.source||it.source||"manual",basis:o.basis||it.basis||null,amode:it.amode||"serv",qty:it.qty??1,meal:it.meal||curMeal,sent:it.sent,description:it.description||"",offBasis:o.offBasis||null,fromOverride:!!o.fromOverride,usedFix:!!o.usedFix};
+ let b0=o.basis||it.basis||null;const q0=C.num(it.qty)!=null&&C.num(it.qty)>0?C.num(it.qty):1;
+ if(!b0||b0.derived)b0=C.deriveBasis(it,q0);else{const rb=C.reconcileServingG(b0);if(rb)b0=rb}
+ ed={mode:o.mode||"add",orig:it,id:it.id||uid(),date:it.date||today(),time:it.time||null,source:o.source||it.source||"manual",basis:b0,amode:b0.derived?"serv":(it.amode||"serv"),qty:q0,meal:it.meal||curMeal,sent:it.sent,description:it.description||"",offBasis:o.offBasis||null,fromOverride:!!o.fromOverride,usedFix:!!o.usedFix};
  const b=ed.basis;
  if(b&&!C.canMode(b,ed.amode))ed.amode=C.canMode(b,"serv")?"serv":"g";
  if(b&&ed.mode==="add"&&!it.qty&&ed.amode==="g")ed.qty=100;
@@ -810,30 +840,36 @@ function openEditor(o){
  $("edsave").textContent=ed.mode==="edit"?"Save & send update":"Save & send to Rep";
  $("edfav").checked=!!(recent.find(r=>r.key===recentKey(it))||{}).fav;
  // basis block
- const hasB=!!b;
- $("edbasis").classList.toggle("hidden",!hasB);$("edamtwrap").classList.toggle("hidden",!hasB);$("edfreewrap").classList.toggle("hidden",hasB);
+ const hasB=!!b,dv=!!(b&&b.derived);
+ $("edbasis").classList.toggle("hidden",!hasB||dv);$("edamtwrap").classList.toggle("hidden",!hasB);$("edfreewrap").classList.toggle("hidden",!dv);
+ $("edamtwrap").classList.toggle("derived",dv);
  if(hasB){
   ed.bkey=b.perServing||!b.per100?"perServing":"per100";if(!b[ed.bkey])b[ed.bkey]={cal:null,p:null,c:null,f:null};
   $("edbtitle").textContent=ed.bkey==="perServing"?"Per serving"+(ed.source==="label"?" (from label)":""):"Per 100 "+(b.unit==="ml"?"mL":"g");
   EB.forEach((id,i)=>setv(id,C.r1(b[ed.bkey][BK[i]])));
   setv("bserv",b.servingText);setv("bservg",b.servingG);setv("bspc",b.servingsPerContainer);
-  $("edbinfo").innerHTML=b.per100&&ed.bkey==="perServing"?`Per 100 ${b.unit==="ml"?"mL":"g"}: <b>${fmtK(b.per100.cal)}</b> kcal · P <b>${fmtG(b.per100.p)}</b> · C <b>${fmtG(b.per100.c)}</b> · F <b>${fmtG(b.per100.f)}</b>`:"";
+  $("edbinfo").innerHTML=ed.bkey==="perServing"?per100Info(b):"";
   setv("qty",ed.qty);segSync();
- }else setv("edamount",it.amount||"");
+  if(dv)setv("edamount",b.servingText||"");
+ }
  // totals
  TK.forEach((k,i)=>setv(ET[i],it[k]));
  setv("esod",it.sodium_mg);setv("esug",it.sugars_g);setv("efib",it.fiber_g);setv("eingr",it.ingredients||"");
  $("edextra").open=!!(o.label&&o.label.ingredients);
- if(hasB&&(ed.mode==="add"||it.calories==null))edRecalc();
+ if(hasB&&!dv&&(ed.mode==="add"||it.calories==null))edRecalc();
  mealChips("edmeals",ed.meal,m=>ed.meal=m);
  ed.basisSnap=C.basisSnap(ed.basis);
  edCheck();
  show("edsheet");$("edsheet").querySelector(".panel").scrollTop=0;
 }
-function segSync(){const b=ed.basis;document.querySelectorAll("#edamtwrap .seg button").forEach(x=>{x.classList.toggle("on",x.dataset.m===ed.amode);x.disabled=!C.canMode(b,x.dataset.m);x.style.opacity=x.disabled?.35:1})}
-function readBasis(){const b=ed.basis;if(!b)return;EB.forEach((id,i)=>b[ed.bkey][BK[i]]=C.num($(id).value));b.servingText=$("bserv").value.trim();const g=C.num($("bservg").value);b.servingG=g&&g>0?g:null;b.servingsPerContainer=C.num($("bspc").value)}
+// per 100 g line under the per-serving numbers: from those numbers + Serving g when known (they're what the user edits)
+function per100Info(b){if(!b)return"";let n=b.per100;const s=b.perServing,g=C.num(b.servingG);
+ if(s&&s.cal!=null&&g>0){const f=100/g;n={cal:s.cal*f,p:s.p==null?null:s.p*f,c:s.c==null?null:s.c*f,f:s.f==null?null:s.f*f}}
+ return n?`Per 100 ${b.unit==="ml"?"mL":"g"}: <b>${fmtK(n.cal)}</b> kcal · P <b>${fmtG(n.p)}</b> · C <b>${fmtG(n.c)}</b> · F <b>${fmtG(n.f)}</b>`:""}
+function segSync(){const b=ed.basis;const qu=document.querySelector("#edamtwrap .qunit");if(qu)qu.textContent=C.num($("qty").value)===1?"serving":"servings";document.querySelectorAll("#edamtwrap .seg button").forEach(x=>{x.classList.toggle("on",x.dataset.m===ed.amode);x.disabled=!C.canMode(b,x.dataset.m);x.style.opacity=x.disabled?.35:1})}
+function readBasis(){const b=ed.basis;if(!b)return;if(b.derived){b.servingText=$("edamount").value.trim();return}EB.forEach((id,i)=>b[ed.bkey][BK[i]]=C.num($(id).value));b.servingText=$("bserv").value.trim();const g=C.num($("bservg").value);b.servingG=g&&g>0?g:null;b.servingsPerContainer=C.num($("bspc").value)}
 function edRecalc(){
- readBasis();ed.qty=C.num($("qty").value);
+ readBasis();ed.qty=C.num($("qty").value);if(ed.basis&&!ed.basis.derived&&ed.bkey==="perServing")$("edbinfo").innerHTML=per100Info(ed.basis);
  segSync();
  const r=C.computeMacros(ed.basis,ed.amode,ed.qty);
  if(r){TK.forEach((k,i)=>setv(ET[i],r[k]));setv("esod",r.sodium_mg);setv("esug",r.sugars_g);setv("efib",r.fiber_g);ed.computed=r}
@@ -841,7 +877,7 @@ function edRecalc(){
  edCheck();
 }
 function edCheck(){const c=C.num($("ecal").value),p=C.num($("epro").value),cb=C.num($("ecarb").value),f=C.num($("efat").value);
- const servingG=ed&&ed.basis?ed.basis.servingG:C.num($("bservg")&&$("bservg").value);
+ const servingG=ed&&ed.basis?ed.basis.servingG:null;
  const pack=ed&&ed.basis?{packageG:ed.basis.packageG,unit:ed.basis.unit}:{};
  const s=C.nutritionSanity(Object.assign({calories:c,protein_g:p,carbs_g:cb,fat_g:f,servingG},pack));
  let top="",h="";
@@ -858,7 +894,7 @@ $("edcheck").addEventListener("click",e=>{
  $("edbtitle").textContent="Per serving";
  EB.forEach((id,i)=>setv(id,C.r1(ed.basis.perServing[BK[i]])));
  setv("bserv",ed.basis.servingText);setv("bservg",ed.basis.servingG);setv("qty",1);
- $("edbinfo").innerHTML=ed.basis.per100?`Per 100 ${ed.basis.unit==="ml"?"mL":"g"}: <b>${fmtK(ed.basis.per100.cal)}</b> kcal · P <b>${fmtG(ed.basis.per100.p)}</b> · C <b>${fmtG(ed.basis.per100.c)}</b> · F <b>${fmtG(ed.basis.per100.f)}</b>`:"";
+ $("edbinfo").innerHTML=per100Info(ed.basis);
  edRecalc();
 });
 $("edovreset").onclick=async()=>{
@@ -876,15 +912,20 @@ $("edovreset").onclick=async()=>{
  openEditor({mode:ed.mode,item,source:"barcode",basis:b,offBasis:b,fromOverride:false,msg:"Reset to Open Food Facts numbers. Check the label — they may be off."});
 };
 EB.concat(["bservg"]).forEach(id=>$(id).addEventListener("input",edRecalc));
-$("bserv").addEventListener("input",()=>{const m=$("bserv").value.match(/\(?\s*([\d.]+)\s*g\s*\)?/i);if(m&&!$("bservg").value){setv("bservg",m[1]);edRecalc()}});
+$("bserv").addEventListener("input",()=>{const g=C.servingTextG($("bserv").value);if(g&&C.num($("bservg").value)!==g){setv("bservg",g);if(ed&&ed.basis)ed.basis.unit="g"}edRecalc()});
 $("bspc").addEventListener("input",readBasis);
 $("qty").addEventListener("input",edRecalc);
-ET.forEach(id=>$(id).addEventListener("input",edCheck));
+// no label basis: what is typed in Totals is for the current quantity, so keep one portion = totals / qty
+function derivedFromTotals(){if(!ed||!ed.basis||!ed.basis.derived)return;const q=C.num($("qty").value);if(!(q>0))return;
+ const t=id=>{const v=C.num($(id).value);return v==null?null:v/q};
+ ed.basis.perServing={cal:t("ecal"),p:t("epro"),c:t("ecarb"),f:t("efat"),sod:t("esod"),sug:t("esug"),fib:t("efib")}}
+ET.concat(["esod","esug","efib"]).forEach(id=>$(id).addEventListener("input",()=>{derivedFromTotals();edCheck()}));
+$("edamount").addEventListener("input",()=>{if(ed&&ed.basis&&ed.basis.derived)ed.basis.servingText=$("edamount").value.trim()});
 document.querySelectorAll("#edamtwrap .seg button").forEach(x=>x.onclick=()=>{if(x.disabled)return;const old=ed.amode;if(old===x.dataset.m)return;
  const g=ed.computed&&ed.computed.grams;ed.amode=x.dataset.m;
  if(ed.amode==="g")setv("qty",g!=null?Math.round(g):100);else setv("qty",ed.basis.servingG&&C.num($("qty").value)!=null?C.r1(C.num($("qty").value)/ed.basis.servingG):1);
  edRecalc()});
-const stepQ=dir=>{let q=C.num($("qty").value)||0;const s=ed.amode==="g"?10:.5;q=Math.max(0,Math.round((q+dir*s)*100)/100);setv("qty",q);edRecalc()};
+const stepQ=dir=>{let q=C.num($("qty").value)||0;const s=ed.amode==="g"?10:(ed.basis&&ed.basis.derived&&q+dir>=1&&q%1===0)?1:.5;q=Math.max(0,Math.round((q+dir*s)*100)/100);setv("qty",q);edRecalc()};
 $("qminus").onclick=()=>stepQ(-1);$("qplus").onclick=()=>stepQ(1);
 $("edcancel").onclick=()=>{hide("edsheet");ed=null};
 $("edlabel").onclick=()=>{pendingBarcode=$("edcode").value.trim();hide("edsheet");$("labelfile").click()};
@@ -896,13 +937,13 @@ $("edsave").onclick=()=>{
  if(!name){toast("Give it a name ✍️");$("edname").focus();return}
  const comp=ed.basis?C.computeMacros(ed.basis,ed.amode,C.num($("qty").value)):null;
  const it={id:ed.id,date:ed.date,time:ed.time||C.hhmm(new Date()),meal:ed.meal,name,brand:$("edbrand").value.trim(),barcode:code,source:ed.source,
-  amount:ed.basis?(comp?comp.amount:""):$("edamount").value.trim(),grams:comp?comp.grams:null,
+  amount:comp?comp.amount:(ed.basis&&ed.basis.derived?ed.basis.servingText:$("edamount").value.trim()),grams:comp?comp.grams:null,
   calories:C.r0(C.num($("ecal").value)),protein_g:C.r1(C.num($("epro").value)),carbs_g:C.r1(C.num($("ecarb").value)),fat_g:C.r1(C.num($("efat").value)),
   sodium_mg:C.r0(C.num($("esod").value)),sugars_g:C.r1(C.num($("esug").value)),fiber_g:C.r1(C.num($("efib").value)),
   ingredients:$("eingr").value.trim().slice(0,1500),serving_size:ed.basis?ed.basis.servingText:"",description:ed.description,
   basis:ed.basis,amode:ed.amode,qty:C.num($("qty").value)};
  it.estimate_needed=TK.some(k=>it[k]==null);
- if(code&&ed.basis&&(ed.source==="barcode"||getOverride(code))&&(ed.usedFix||C.basisSnap(ed.basis)!==ed.basisSnap)){
+ if(code&&ed.basis&&!ed.basis.derived&&(ed.source==="barcode"||getOverride(code))&&(ed.usedFix||C.basisSnap(ed.basis)!==ed.basisSnap)){
   const ov=C.basisToOverride(ed.basis);if(ov){ov.name=name;ov.brand=it.brand;putOverride(code,ov)}
  }
  if(ed.mode==="edit"){const o=ed.orig||{};const changed=TK.some(k=>C.r1(C.num(o[k]))!==C.r1(it[k]));

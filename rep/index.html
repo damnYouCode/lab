@@ -585,7 +585,7 @@ function render(){
  const add=document.createElement("button");add.type="button";add.className="addex";add.id="addex";add.textContent="+ Add exercise";
  add.onclick=()=>openAdd("day");
  const on=finOn(),fb=document.createElement("button");fb.type="button";fb.className="finbtn"+(on?" on":"");fb.id="finbtn";
- fb.innerHTML=on?`<span>✕</span><span>Remove finisher<small>Takes the 4 finisher exercises off today</small></span>`:`<span style="font-size:22px">🔥</span><span>Add Core + Conditioning finisher<small>~12 min · ${FINISHER[st.where].map(x=>esc(x[0])).join(" · ")}</small></span>`;
+ fb.innerHTML=on?`<span>✕</span><span>Remove finisher<small>Takes the 4 finisher exercises off today</small></span>`:`<span style="font-size:22px">🔥</span><span>Add Core + Conditioning finisher<small>~15 min · ${FINISHER[st.where].map(x=>esc(x[0])).join(" · ")}</small></span>`;
  fb.onclick=toggleFinisher;list.appendChild(fb);list.appendChild(add);
  honorMotion();
  progress();renderHist();

@@ -60,6 +60,10 @@ h1{font-size:30px;font-weight:900;margin:0;letter-spacing:-.5px;background:linea
 .addex{width:100%;padding:14px;border-radius:18px;border:1.5px dashed #3a3a55;background:transparent;color:var(--b);font-weight:900;font-size:15px;margin:2px 0 6px}
 .badge{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;font-size:10.5px;font-weight:800;vertical-align:middle;background:#2a2a3d;color:var(--dim)}
 .badge.pin{background:rgba(255,176,32,.16);color:var(--b)}
+.badge.fin{background:rgba(255,61,110,.16);color:#ff8aa6}
+.finbtn{width:100%;padding:14px;border-radius:18px;border:1.5px solid rgba(255,61,110,.55);background:linear-gradient(135deg,rgba(255,61,110,.14),rgba(255,176,32,.10));color:var(--text);font-weight:900;font-size:15px;margin:2px 0 6px;text-align:left;display:flex;align-items:center;gap:10px}
+.finbtn small{display:block;color:var(--dim);font-weight:700;font-size:12px;margin-top:2px}
+.finbtn.on{border-style:dashed;background:transparent;color:var(--dim)}
 .xrm{flex:none;width:28px;height:28px;border-radius:50%;border:1px solid #2f2f47;background:var(--card2);color:var(--dim);font-size:13px;font-weight:900;line-height:1;padding:0;margin-left:2px}
 .tin{width:100%;padding:12px;border-radius:12px;border:1px solid #2f2f47;background:var(--card2);color:var(--text);font-size:16px;font-weight:700;font-family:inherit}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 12px}
@@ -371,18 +375,104 @@ const DEMO_ALIAS=[
  [/crunch/,"Cable Crunch / Plank"],[/leg raise|knee raise/,"Hanging Leg Raise"]];
 function demoFor(name){if(DEMO[name])return DEMO[name];const n=String(name||"").toLowerCase().replace(/[-_]/g," ").replace(/\s+/g," ").trim();
   for(const [re,k] of DEMO_ALIAS)if(re.test(n))return DEMO[k];return DEMO._generic}
+// ---- core + conditioning finisher demos ----
+// front view with free arms: both hands meet at one point (woodchop); shoulder line can tilt and shift, hips can drop
+function frontX(p,s){
+  const L={};for(const k in LEN)L[k]=LEN[k]*s;
+  const segs={},j={},Hc=[50+(p.hx||0),57+(p.drop||0)],Nb=[50+(p.sx||0),27+(p.drop||0)*.8];
+  const tl=(p.tl||0)*D2R,hw=9*(p.hw||1),sv=[Math.cos(tl),Math.sin(tl)];
+  const sp=[Nb[0]-Hc[0],Nb[1]-Hc[1]],sl=Math.hypot(...sp)||1,su=[sp[0]/sl,sp[1]/sl];
+  const H=add(Nb,su,L.n+L.h-2.5);
+  const Sh=[add(Nb,sv,-hw),add(Nb,sv,hw)];
+  segs.sh={pts:[Sh[0],Nb,Sh[1]],len:[hw,hw]};
+  segs.sp={pts:[Nb,Hc],len:[sl]};
+  segs.pel={pts:[[Hc[0]-5,Hc[1]],[Hc[0]+5,Hc[1]]],len:[10]};
+  [-1,1].forEach((sg,i)=>{
+    // arms reach toward the viewer here, so they are drawn foreshortened: straight, elbow halfway, a slight natural bend
+    const W=add(p.hands,[sg*1.6,0]),v=[W[0]-Sh[i][0],W[1]-Sh[i][1]],vl=Math.hypot(...v)||1,E=add(add(Sh[i],v,.5),[-v[1]/vl,v[0]/vl],(p.eb||1.2)*-sg);
+    j["w"+i]=W;j["e"+i]=E;segs["arm"+i]={pts:[Sh[i],E,W],len:[L.ua,L.fa]};
+    const Hp=[Hc[0]+5*sg,Hc[1]],A=[50+11*sg,100],[K]=ik(Hp,A,L.th,L.sh,sg>0?1:-1);
+    segs["leg"+i]={pts:[Hp,K,A,[A[0]+6*sg,100.5]],len:[L.th,L.sh,6]};
+  });
+  j.W=p.hands;
+  return {j,segs,head:H,r:L.r,want:[]};
+}
+const BIKE_C=[52,84],BIKE_R=7.5;
+const BIKE_ENV=FLOOR+'<line class="eq" x1="26" y1="100" x2="80" y2="100"/><circle class="eqf" cx="66" cy="80" r="12"/>'+
+  '<line class="eq" x1="40" y1="58" x2="50" y2="99"/><line class="eq" x1="74" y1="99" x2="71" y2="48"/><polyline class="eq" points="71,48 66,46 62,47.5"/>'+
+  '<rect class="eqf" x="31" y="54.5" width="15" height="4" rx="2"/><circle class="eq" cx="52" cy="84" r="2.2"/>';
+const pedal=a=>add(BIKE_C,[Math.cos(a*D2R),Math.sin(a*D2R)],BIKE_R);
+// rower: seat on a rail, feet strapped to an angled foot plate, chain to the flywheel
+const ROW_ENV=FLOOR+'<line class="eq" x1="10" y1="93" x2="80" y2="93"/><line class="eq" x1="13" y1="93" x2="13" y2="102"/><line class="eq" x1="74" y1="93" x2="74" y2="102"/>'+
+  '<circle class="eqf" cx="86" cy="86" r="9"/><line class="eq" x1="80" y1="93" x2="90" y2="102"/><polyline class="eqf" points="66.5,93 70.5,81 73.5,82 70,93"/>';
+const ROW_SEAT={type:"poly",cls:"eqf",back:1,at:j=>{const x=j.P[0],y=j.P[1]+2;return [[x-6,y],[x+6,y],[x+6,y+3.5],[x-6,y+3.5],[x-6,y]]}};
+const rowPose=(hx,tor,hd,w,e)=>({P:[hx,88.5],tor,hd,legs:[{a:[69,85],fa:-62,k:1},{a:[69,85],fa:-62,k:1,f:1}],arms:[{w,e:e||-1},{w:j=>add(T2(w,j),[-1.2,0]),e:e||-1,f:1}]});
+const T2=(v,j)=>typeof v==="function"?v(j):v;
+// mountain climbers on a BOSU (hands on the dome): straight-arm plank, knees drive to the chest one at a time
+const MC_HAND=[71,90.6],MC_TOE=[18,100.8];
+const mcPose=(nearIn,farIn)=>{const s=.8,ang=24.5,bl=bodyLine(MC_TOE,68,ang,s);
+  const leg=(inn,f)=>inn>0?{a:[42-4*(1-inn),90+3*(1-inn)],fa:70,k:1,f}:{t:MC_TOE,fa:68,f};
+  return {...bl,hd:-6,legs:[leg(nearIn,0),leg(farIn,1)],arms:[{w:MC_HAND},{w:add(MC_HAND,[-1.5,0]),f:1}]}};
+// dead bug: lying face-up, arms to the ceiling, hips and knees at 90; opposite arm and leg reach out, then switch
+const DB_P=[57,95.5],DB_S=[33.2,95.5];
+const dbLeg=(ext,f)=>ext?{a:[91,90.5],fa:-35,k:1,f}:{a:[74.8,77.2],fa:-80,k:1,f};
+const dbArm=(over,f)=>over?{w:[8.5,90.5],e:-1,f}:{w:[34.2,69.6],e:-1,f};
+const dbPose=(nearLeg,farLeg,nearArm,farArm)=>({P:DB_P,tor:-90,hd:4,legs:[dbLeg(nearLeg,0),dbLeg(farLeg,1)],arms:[dbArm(nearArm,0),dbArm(farArm,1)]});
+// walking in place, one dumbbell in the near hand; the other arm swings free
+const walk=(nearFwd,phase)=>{
+  const fwd=(f)=>({a:[58.5,98.6],fa:-14,k:1,f}),back=f=>({t:[37,100.6],fa:42,k:1,f}),stand=f=>({a:[50,100],fa:4,k:1,f}),swing=f=>({a:[44,92.5],fa:38,k:1,f});
+  const legs=phase?(nearFwd?[stand(0),swing(1)]:[swing(0),stand(1)]):(nearFwd?[fwd(0),back(1)]:[back(0),fwd(1)]);
+  return {P:[49,phase?58.4:59.4],tor:1.5,legs,arms:[{w:hangF},{w:j=>add(add(j.S,j.up,-29.2),j.fw,nearFwd?(phase?2:-4):(phase?2:8)),f:1}]}};
+// ab wheel rollout: knees pinned on the floor, thigh swings forward around the knee, arms stay straight to the wheel
+const RO_K=[31,99.2];
+const roPose=(phi,tor,hd)=>{const s=.9,P=add(RO_K,[Math.sin(phi*D2R),-Math.cos(phi*D2R)],LEN.th*s),th=tor*D2R;
+  const S=add(P,[Math.sin(th),-Math.cos(th)],LEN.t*s),dy=97-S[1],reach=(LEN.ua+LEN.fa)*s-.25;
+  const W=[S[0]+Math.sqrt(Math.max(0,reach*reach-dy*dy)),97];
+  return {P,tor,hd,legs:[{a:add(RO_K,[-LEN.sh*s,0.1]),fa:178,k:1}],arms:[{w:W},{w:add(W,[-1,0]),f:1}]}};
+Object.assign(DEMO,{
+ "Bike Intervals":{env:BIKE_ENV,loop:1,dur:1.1,items:[{type:"cable",from:BIKE_C,at:"a1"},{type:"cable",from:BIKE_C,at:"a0"}],
+   poses:[0,60,120,180,240,300].map(a=>({P:[39,55],tor:22,hd:-4,legs:[{a:pedal(a),fa:6+8*Math.sin(a*D2R),k:1},{a:pedal(a+180),fa:6+8*Math.sin((a+180)*D2R),k:1,f:1}],arms:[{w:[62.5,47.5]},{w:[61.5,48.5],f:1}]}))},
+ "Bike or Rower Intervals":{s:.86,env:ROW_ENV,dur:2.2,items:[ROW_SEAT,{type:"cable",from:[84,84],at:"w0"},{type:"ball",at:"w0",r:2.2}],poses:[
+   rowPose(50,30,-6,j=>add(add(j.S,j.fw,24.5),j.up,-8)),
+   rowPose(44,24,-4,j=>add(add(j.S,j.fw,24.5),j.up,-8)),
+   rowPose(35.5,4,0,j=>add(add(j.S,j.fw,23.5),j.up,-10)),
+   rowPose(34,-20,6,j=>add(add(j.S,j.fw,9),j.up,-9),-1)]},
+ "BOSU Mountain Climbers":{s:.8,loop:1,dur:1.1,env:FLOOR+'<path class="eqf" d="M56 102 A16 11 0 0 1 88 102Z"/>',poses:[
+   mcPose(1,0),mcPose(.45,.45),mcPose(0,1),mcPose(.45,.45)]},
+ "Dead Bug":{s:.85,loop:1,dur:4.4,env:FLOOR,poses:[
+   dbPose(0,0,0,0),dbPose(1,0,0,1),dbPose(0,0,0,0),dbPose(0,1,1,0)]},
+ "DB Suitcase Carry":{env:FLOOR,loop:1,dur:1.5,items:[{type:"db",at:"w0",v:0}],poses:[
+   walk(1,0),walk(1,1),walk(0,0),walk(0,1)]},
+ "Cable Woodchop":{view:"frontx",env:FLOOR+'<line class="eq" x1="5" y1="6" x2="5" y2="102"/><line class="eq" x1="5" y1="9" x2="13" y2="9"/><circle class="eq" cx="13" cy="11.5" r="2.5"/>',dur:2.6,
+   items:[{type:"cable",from:[13,14],at:"W"},{type:"ball",at:"W",r:2.6}],poses:[
+   {hands:[25,12],tl:-8,sx:-3.5,hx:-1,hw:.8,drop:0},
+   {hands:[36,29],tl:-3,sx:-1.5,hw:.9,drop:1.5},
+   {hands:[51,46],tl:5,sx:2,hx:1,hw:.85,drop:3.5},
+   {hands:[63,63],tl:12,sx:5,hx:2,hw:.75,drop:6}]},
+ "Pallof Press":{env:FLOOR+'<rect class="eqf" x="14" y="16" width="8" height="86" rx="1.5"/><circle class="eq" cx="22" cy="44" r="2.4"/>',dur:2.8,
+   items:[{type:"cable",from:[22,44],at:"w0"},{type:"ball",at:"w0",r:2.4}],poses:[
+   {P:[50,61],tor:2,legs:[{a:[56,100],k:1},{a:[43,100],k:1,f:1}],arms:[{w:j=>add(add(j.S,j.fw,7),j.up,-11)},{w:j=>add(add(j.S,j.fw,6),j.up,-11),f:1}]},
+   {P:[50,61],tor:2,legs:[{a:[56,100],k:1},{a:[43,100],k:1,f:1}],arms:[{w:j=>add(add(j.S,j.fw,19),j.up,-9)},{w:j=>add(add(j.S,j.fw,18),j.up,-9),f:1}]},
+   {P:[50,61],tor:2,legs:[{a:[56,100],k:1},{a:[43,100],k:1,f:1}],arms:[{w:j=>add(add(j.S,j.fw,30.4),j.up,-3.5)},{w:j=>add(add(j.S,j.fw,29.4),j.up,-3.5),f:1}]}]},
+ "Ab Wheel Rollout":{s:.9,env:FLOOR,dur:3.2,items:[{type:"ball",at:"w0",r:5,c:"eqf"}],poses:[
+   roPose(-8,64,-8),roPose(14,70,-6),roPose(34,77,-4),roPose(46,82,-2)]}
+});
+DEMO_ALIAS.unshift(
+ [/rower|rowing|\berg\b|concept ?2/,"Bike or Rower Intervals"],[/\bbike\b|cycling|peloton|nordic ?track|air ?dyne|interval/,"Bike Intervals"],
+ [/mountain ?climb/,"BOSU Mountain Climbers"],[/dead ?bug/,"Dead Bug"],[/suitcase|(one|single).?(arm|hand|side)d? ?(db |dumbbell |kb |kettlebell )?carry/,"DB Suitcase Carry"],
+ [/wood ?chop|cable chop|\bchops?\b/,"Cable Woodchop"],[/pallof|anti.?rotation/,"Pallof Press"],[/roll ?out/,"Ab Wheel Rollout"]);
 //END EXTRAANIM
 function buildPoses(name){
   const d=demoFor(name),s=d.s||1;
-  return {d,b:d.poses.map(p=>{const o=d.view==="front"?front(p,s):side(p,s);
+  return {d,b:d.poses.map(p=>{const o=d.view==="front"?front(p,s):d.view==="frontx"?frontX(p,s):side(p,s);
     o.items=(d.items||[]).map(it=>{const at=typeof it.at==="function"?it.at(o.j):o.j[it.at];return {it,at}});return o})};
 }
 function demoSVG(name){
   const {d,b}=buildPoses(name),dur=(d.dur||2.4)+"s";
-  const nk=b.length,multi=nk>2&&!d.breath,ez=i=>(1-Math.cos(Math.PI*i/(nk-1)))/2;
-  const kt=multi?`keyTimes="0;${[...b.map((_,i)=>R3(.08+.38*ez(i))),...b.map((_,i)=>R3(.58+.42*ez(i)))].join(";")}"`:d.breath?'keyTimes="0;0.5;1" keySplines=".45 0 .55 1;.45 0 .55 1"':'keyTimes="0;0.08;0.46;0.58;1" keySplines="0 0 1 1;.42 0 .58 1;0 0 1 1;.42 0 .58 1"';
-  const seq=a=>multi?[a[0],...a,...a.slice().reverse()]:d.breath?[a[0],a[1],a[0]]:[a[0],a[0],a[1],a[1],a[0]];
-  const an=(attr,vals)=>{const v=seq(vals);return v.every(x=>x===v[0])?"":`<animate attributeName="${attr}" values="${v.join(";")}" ${kt} calcMode="${multi?"linear":"spline"}" dur="${dur}" repeatCount="indefinite"/>`};
+  const nk=b.length,loop=!!d.loop,multi=nk>2&&!d.breath&&!loop,ez=i=>(1-Math.cos(Math.PI*i/(nk-1)))/2;
+  const kt=loop?`keyTimes="${[...b.map((_,i)=>R3(i/nk)),1].join(";")}"`:multi?`keyTimes="0;${[...b.map((_,i)=>R3(.08+.38*ez(i))),...b.map((_,i)=>R3(.58+.42*ez(i)))].join(";")}"`:d.breath?'keyTimes="0;0.5;1" keySplines=".45 0 .55 1;.45 0 .55 1"':'keyTimes="0;0.08;0.46;0.58;1" keySplines="0 0 1 1;.42 0 .58 1;0 0 1 1;.42 0 .58 1"';
+  const seq=a=>loop?[...a,a[0]]:multi?[a[0],...a,...a.slice().reverse()]:d.breath?[a[0],a[1],a[0]]:[a[0],a[0],a[1],a[1],a[0]];
+  const an=(attr,vals)=>{const v=seq(vals);return v.every(x=>x===v[0])?"":`<animate attributeName="${attr}" values="${v.join(";")}" ${kt} calcMode="${multi||loop?"linear":"spline"}" dur="${dur}" repeatCount="indefinite"/>`};
   const pts=a=>a.map(p=>R2(p[0])+","+R2(p[1])).join(" ");
   const poly=(cls,arr)=>`<polyline class="${cls}" points="${arr[0]}">${an("points",arr)}</polyline>`;
   const circ=(cls,c,r)=>`<circle class="${cls}" cx="${R2(c[0][0])}" cy="${R2(c[0][1])}" r="${r}">${an("cx",c.map(p=>R2(p[0])))}${an("cy",c.map(p=>R2(p[1])))}</circle>`;
@@ -398,8 +488,8 @@ function demoSVG(name){
   let body="";for(const k of order){const cls="b"+(b[0].segs[k].f?" f":"");body+=poly(cls,b.map(o=>pts(o.segs[k].pts)));
     if(k==="trunk"||k==="sp")body+=circ("hd",b.map(o=>o.head),R2(b[0].r))}
   // plates sit behind the body, dumbbells in front of it
-  const pass=types=>b[0].items.map((x,k)=>types.includes(x.it.type)?item(k):"").join("");
-  return `<svg class="fig" viewBox="0 0 100 110" aria-hidden="true">${d.env||""}${pass(["cable","plate"])}${body}${pass(["db","ball","poly"])}</svg>`;
+  const pass=types=>b[0].items.map((x,k)=>types.includes(x.it.back?"_back":x.it.type)?item(k):"").join("");
+  return `<svg class="fig" viewBox="0 0 100 110" aria-hidden="true">${d.env||""}${pass(["cable","plate","_back"])}${body}${pass(["db","ball","poly"])}</svg>`;
 }
 //END ANIMJS
 function honorMotion(root){
@@ -428,6 +518,24 @@ function save(){SS("rep_state",st)}
 let extras=LS("rep_extras")||{}, xtoday=LS("rep_extras_today")||{};
 const QUICK=["Bicep Curls","Hammer Curls","Dumbbell Pullover","Triceps Pushdown","Skull Crushers","Calf Raises","Face Pulls","Leg Curl","Leg Extension","Cable Fly","Shrugs","Ab Wheel","Russian Twist","Farmer Carry"];
 const MAXEX=30;
+// Core + Conditioning finisher: [name, sets, scheme, rest seconds the circle starts]; for intervals the rest is the 60 s easy part
+const FINISHER={
+ home:[["Bike Intervals",6,"30s hard / 60s easy",60],["BOSU Mountain Climbers",3,"30s",30],["Dead Bug",3,"10/side",30],["DB Suitcase Carry",3,"40s/side",30]],
+ gym:[["Bike or Rower Intervals",6,"30s hard / 60s easy",60],["Cable Woodchop",3,"12/side",30],["Pallof Press",3,"10/side",30],["Ab Wheel Rollout",3,"8",45]]};
+const isTimed=r=>/^\s*\d+\s*s\b/i.test(String(r||""));
+const finOn=(where=st.where,day=st.day)=>(xtoday[where+day]||[]).some(e=>e.fin);
+function toggleFinisher(){
+ const k=st.where+st.day,cur=xtoday[k]||[];
+ if(finOn()){
+  const ids=cur.filter(e=>e.fin).map(e=>k+"x"+e.id);
+  if(ids.some(id=>(st.sets[id]||[]).some(Boolean))&&!confirm("Remove the finisher and the sets you checked in it?"))return;
+  xtoday[k]=cur.filter(e=>!e.fin);if(!xtoday[k].length)delete xtoday[k];clearIds(st,ids);saveExtras();save();render();toast("Finisher removed");return}
+ if(dayList().length+FINISHER[st.where].length>MAXEX){toast("That's the max for one day");return}
+ const base=Date.now().toString(36);
+ xtoday[k]=cur.concat(FINISHER[st.where].map(([name,sets,scheme,rest],i)=>({id:base+"f"+i,name,sets,scheme,fin:1,rest})));
+ saveExtras();render();toast("🔥 Finisher added for today");
+ setTimeout(()=>{const c=document.querySelector(".ex.fin");c&&c.scrollIntoView({behavior:"smooth",block:"center"})},60);
+}
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const schemeTxt=r=>/[a-z]/i.test(r||"")?r:`${r} reps`;
 function saveExtras(){SS("rep_extras",extras);SS("rep_extras_today",xtoday)}
@@ -443,7 +551,8 @@ function buildCard(it,store,onChange,opts={}){
  const {n,s,r,id,i}=it, done=(store.sets[id]||[]);
  const card=document.createElement("div");card.className="ex"+(done.filter(Boolean).length===s?" done":"");
  const lw=last[n];
- const badge=it.x?(it.pinned?`<span class="badge pin">📌 Pinned</span>`:`<span class="badge">Extra</span>`):"";
+ const badge=it.x?(it.pinned?`<span class="badge pin">📌 Pinned</span>`:it.x.fin?`<span class="badge fin">🔥 Finisher</span>`:`<span class="badge">Extra</span>`):"";
+ if(it.x&&it.x.fin)card.classList.add("fin");
  card.innerHTML=`<div class="exh"><div class="who"><button type="button" class="demo" aria-label="How to do ${esc(n)}">${demoSVG(n)}</button><div><div class="name">${esc(n)}${badge}</div><div class="scheme">${s} sets × ${esc(it.x?schemeTxt(r):r+" reps")}</div>${lw?`<div class="last">Last: ${esc(lw.w||"–")} lb · ${esc(lw.r||"")}</div>`:""}</div></div>
  <div class="wt"><input inputmode="decimal" placeholder="${esc(lw&&lw.w?lw.w:"lb")}" value="${esc(store.w[id]||"")}"><small>lb</small>${it.x?`<button type="button" class="xrm" aria-label="Remove ${esc(n)}">✕</button>`:""}</div></div><div class="sets"></div>`;
  card.querySelector(".wt input").oninput=e=>{store.w[id]=e.target.value;onChange(false)};
@@ -451,8 +560,8 @@ function buildCard(it,store,onChange,opts={}){
  for(let k=0;k<s;k++){
   const wrap=document.createElement("div");wrap.className="setwrap";
   const b=document.createElement("button");b.className="set"+(done[k]?" on":"");b.innerHTML=`<b>${k+1}</b>`;
-  b.onclick=()=>{const a=store.sets[id]||[];a[k]=!a[k];store.sets[id]=a;onChange(false);if(a[k]){navigator.vibrate&&navigator.vibrate(30);startTimer(i<2&&opts.where==="gym"?150:90)}onChange(true)};
-  const ri=document.createElement("input");ri.className="repsin";ri.inputMode="numeric";ri.placeholder="reps";ri.value=(store.r[id]||[])[k]||"";
+  b.onclick=()=>{const a=store.sets[id]||[];a[k]=!a[k];store.sets[id]=a;onChange(false);if(a[k]){navigator.vibrate&&navigator.vibrate(30);startTimer(it.x&&it.x.rest?it.x.rest:i<2&&opts.where==="gym"?150:90)}onChange(true)};
+  const ri=document.createElement("input");ri.className="repsin";ri.inputMode="numeric";ri.placeholder=isTimed(r)?"sec":"reps";ri.value=(store.r[id]||[])[k]||"";
   ri.oninput=e=>{const a=store.r[id]||[];a[k]=e.target.value;store.r[id]=a;onChange(false)};
   wrap.appendChild(b);wrap.appendChild(ri);sets.appendChild(wrap);
  }
@@ -474,7 +583,10 @@ function render(){
  const list=document.getElementById("list");list.innerHTML="";
  dayList().forEach(it=>list.appendChild(buildCard(it,st,re=>{save();if(re)render()},{where:st.where,onRemove:removeExtra})));
  const add=document.createElement("button");add.type="button";add.className="addex";add.id="addex";add.textContent="+ Add exercise";
- add.onclick=()=>openAdd("day");list.appendChild(add);
+ add.onclick=()=>openAdd("day");
+ const on=finOn(),fb=document.createElement("button");fb.type="button";fb.className="finbtn"+(on?" on":"");fb.id="finbtn";
+ fb.innerHTML=on?`<span>✕</span><span>Remove finisher<small>Takes the 4 finisher exercises off today</small></span>`:`<span style="font-size:22px">🔥</span><span>Add Core + Conditioning finisher<small>~12 min · ${FINISHER[st.where].map(x=>esc(x[0])).join(" · ")}</small></span>`;
+ fb.onclick=toggleFinisher;list.appendChild(fb);list.appendChild(add);
  honorMotion();
  progress();renderHist();
 }
